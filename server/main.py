@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import sqlite3
 from uvicorn import run
 from typing import Annotated
-from fastapi import FastAPI, Request, Response, HTTPException, Header
+from fastapi import FastAPI, Request, Response, HTTPException, Header ,Depends
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
@@ -33,27 +33,34 @@ async def lifespan(app: FastAPI):
 
     cur.execute("""
             CREATE TABLE IF NOT EXISTS user_data(
-                    User_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     Username TEXT UNIQUE,
                     Email VARCHAR(255) NOT NULL UNIQUE, 
-                    Name Text ,
-                    Number TEXT  UNIQUE,
-                    Password TEXT  ,
-                    Address TEXT, 
+                    Password TEXT,
                     pincode INTEGER,
-                    Post TEXT,
-                    Token TEXT NOT NULL UNIQUE
-            );
-        """)
+                    Name Text,
+                    Number TEXT  UNIQUE,
+                    Address TEXT 
+            );       """)
 
     cur.execute("""
-            CREATE TABLE IF NOT EXISTS field( 
-                User_id INTEGER PRIMARY KEY AUTOINCREMENT,  
+            CREATE TABLE IF NOT EXISTS topic( 
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                User_id INTEGER ,  
                 TopicName VARCHAR(100) NOT NULL,
-                FOREIGN KEY(trackartist) REFERENCES user_data(User_id)
+                FOREIGN KEY(user_data) REFERENCES user_data(id)
                 
          );             
          """)
+    cur.execute("""
+                CREATE TABLE IF NOT EXISTS session(
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        User_id INTEGER,
+                        Token TEXT NOT NULL UNIQUE
+                        FOREIGN KEY(user_data) REFERENCES user_data(id)
+                       
+                );
+            """)
 
     print("==================== table")
 
@@ -119,7 +126,7 @@ async def read_root(data: dict, response: Response):
     password = data["password"]
     var1 = "SELECT Password FROM user_data WHERE email = ?"
     var2 = (email,)
-    cur.execute("SELECT User_id , Password FROM user_data WHERE email = ?", (email,))
+    cur.execute("SELECT id , Password FROM user_data WHERE email = ?", (email,))
     test = cur.fetchone()
     print("========================================", test["user_id"])
     if test is None:
@@ -138,9 +145,9 @@ async def read_root(data: dict, response: Response):
         print("token  ----------------- ", token)
         cur.execute(
             """
-                    INSERT INTO user_data (User_id , Token) VALUES (? ,?)
+                    INSERT INTO session (User_id , Token) VALUES (? ,?)
                     """,
-            (test["User_id"], token),
+            (test["id"], token),
         )
         response.set_cookie(
             key="session_token", value=token, max_age=3600 * 24 * 365 * 200
@@ -153,12 +160,40 @@ async def read_root(data: dict, response: Response):
         return {"message": "Login successful"}
 
 
-@app.get("/loged_in/")
-async def loged_in(
-    authorization: Annotated[str, Header(convert_underscores=False)],
-):
+class User:
+    def __init__(self, user_id:int ,  email:str , username:str , token:str ) -> None:
+        self.username = username
+        self.user_id = user_id
+        self.email = email
+        self.session_token =  token     
+    
+
+
+async def get_current_user(authorization: Annotated[str, Header(convert_underscores=False)],) ->User:
+
     token = authorization.split(" ")[1]
-    return {"token": token}
+    cur.execute("SELECT  user_data.Username , user_data.Email, session.User_id FROM session JOIN user_data ON user_data.id = session.User_id WHERE session.Token = ?", (token,))
+    row = cur.fetchone()
+    if(row != None):
+        user = User (
+            user_id = row['User_id'],
+            username = row['Username'],
+            email=row['Email'],
+            token = token,
+        )
+        return user
+    else:
+        raise HTTPException(status_code=401, detail="Login First")    
+
+
+@app.get("/loged_in/")
+async def loged_in(current_user: Annotated[User, Depends(get_current_user)]):
+    return current_user.user_id
+
+@app.get("/logout/")
+async def logout(current_user: Annotated[User, Depends(get_current_user)]):
+    cur.execute("DELETE FROM session WHERE token = ?;",current_user.session_token)
+    return current_user.session_token
 
 
 if __name__ == "__main__":
