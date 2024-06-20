@@ -1,0 +1,68 @@
+Hi!!!!
+<html>
+  <head>
+  </head>
+
+  <body>
+
+    <div>
+      <p>Total Clicks: <span id="total-clicks"></span></p>
+      <p>Last Clicked At: <span id="last-clicked-at"></span></p>
+    </div>
+      <button onclick="sendClick()">Click</button>
+
+    <script>
+
+      function updateData(data) {
+        document.getElementById("total-clicks").innerText = data['total_clicks'].toString(); // integer -> string
+        document.getElementById("last-clicked-at").innerText = data['last_time'];
+        
+      }
+
+      let y = {"my_name": "ankit"}
+      async function startup() {
+        let response = await fetch("http://localhost:8000/api/get_click_info", {
+          method: "GET"
+        })
+
+        console.log(response)
+
+        if (response.status != 200) {
+          console.log(response)
+          alert("Error! check console")
+          return;
+        }
+        let data = await response.json()
+
+        updateData(data)
+      }
+      async function sendClick() {
+        let response = await fetch("http://localhost:8000/api/register_click", {
+          method: "POST"
+        })
+
+
+
+
+
+        
+        // response.body() #  => bytesj
+        // response.text() # => bytes => string
+        // response.json() # => bytes => string => JSON.parse()
+
+        if (response.status != 200) {
+          console.log(response)
+          alert("Error! check console")
+          return;
+        }
+        let data = await response.json()
+
+        updateData(data)
+      }
+
+
+      startup()
+      console.log("asdkfjasf")
+
+    </script>
+  </body>

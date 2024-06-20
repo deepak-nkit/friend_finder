@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+</head>
+<style>
+    body {
+        background-color: rgb(243, 237, 229);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        font-family: Arial, sans-serif;
+    }
+
+    .box_1 {
+        border: 2px solid rgba(255, 255, 255, 0.938);
+        width: 400px;
+        border-radius: 0 0 30px rgba(0, 0, 0, 0.5);
+        background-color: white;
+        box-shadow: 10px rgba(0 , 0 , 0, 0.5);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        padding: 20px;
+
+    }
+
+    .form-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        padding: 20px;
+    }
+
+    .form-box .icon {
+        position: absolute;
+        top: 0;
+        right: 0;
+        height: 50px;
+        width: 45px;
+        background: black;
+        color: #fff;
+        font-size: 2em;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        cursor: pointer;
+        border-bottom-left-radius: 20px;
+
+    }
+    .form-box div{
+        width: 100%;
+
+    }
+
+    .form-box h2 {
+        font-size: 2em;
+        color: #50457b;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    /* .login-box div {
+        margin-bottom: 15px;
+    } */
+
+    .form-box label {
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .form-box input {
+        width: 100%;
+        padding: 10px;
+        box-sizing: border-box;
+        border:1px solid #ddd;
+        border-radius: 5px;
+        margin-bottom: 5px;
+    }
+
+    select {
+        width: 200px;
+        height: 150px;
+    }
+
+    .submit {
+        width: 100%;
+        padding: 10px;
+        background-color: #50457b;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
+
+    .submit:hover {
+        background-color: #39287b;
+    }
+    
+    .forgot {
+        display: block;
+        margin-top: 10px;
+        text-align: center;
+        font-size: 12px;
+    }
+
+    .line {
+        margin: 20px 0;
+        border: 0;
+        height: 1px;
+        background: #ddd;
+    }
+
+    .new {
+        text-align: center;
+    }
+
+    .new a {
+        color: rgb(190, 124, 19);
+    }
+    .registration{
+        width: 100%;
+        padding: 10px;
+        background-color: #50457b;
+        color: white;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        margin-top: 10px;
+    }
+
+    .form-box.register{
+        display: none;
+    }
+
+</style>
+
+
+<body>
+
+    <div class="box_1">
+
+        <!--   Login Form  -->
+
+        <span class="clos">
+            <ion-icon name="close-outline"></ion-icon>
+        </span>
+
+        <div class="form-box login" id="login_info">
+            <h2>Login</h2>
+            <form class="form-box login">
+                <div>
+                    <label><b>Email</b></label>
+                    <input type="email" id="login_email" placeholder="Enter Email" name="email" required>
+                </div>
+
+                <div>
+                    <label><b>Password</b></label>
+                    <input type="password" id="login_password" placeholder="Enter Password" name="psw" required>
+                </div>
+                <button type="button"  class="submit">Log in</button> 
+
+                <a href="" class="forgot">forgotten password</a>
+                <hr class="line">
+                <div class="new">
+                    <p class="account">Don't have account?
+                        <a href="#" id="show_register_pg">Register</a>
+                    </p>
+                </div>
+            </form>
+        </div>
+ 
+
+        <!--     Register form  -->
+
+        <div class="form-box register" id="register">
+            <h2>Registration</h2>
+
+            <form>
+                <div>
+                    <label><b>Username</b></label>
+                    <input type="text" id="register_username" placeholder="Enter Username" name="email" required>
+                </div>
+
+                <div>
+                    <label><b>Email</b></label>
+                    <input type="email" id="register_email" placeholder="Enter Email" name="email" required>
+                </div>
+
+                <div>
+                    <label><b>Password</b></label>
+                    <input type="password" id="register_password" placeholder="Enter Password" name="psw" required>
+                </div>
+                <div>
+                    <label>Choose your favorite fruits:</label><br>
+                    <select id="fruits" name="fruits" multiple>
+                        <option value="apple">Apple</option>
+                        <option value="banana">Banana</option>
+                        <option value="cherry">Cherry</option>
+                        <option value="date">Date</option>
+                        <option value="elderberry">Elderberry</option>
+                    </select>
+                </div>
+
+
+
+
+
+                <button  type="button" class="registration">Register</button>
+                <hr class="line">
+                <div class="new">
+                    <p class="account">Already have an account
+                        <a href="#" id="show_login_pg">Login</a>
+                    </p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+
+</html>

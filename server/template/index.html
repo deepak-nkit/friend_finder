@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <!-- <link rel="stylesheet" href="{{url_for('template', path="/style.css")}}" />    name use  -->
+    <title>Click</title>
+</head>
+
+<style>
+    .body{
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+        display: flex;
+    }
+
+    .click_section{
+     text-align: center;
+     padding-top: 35vh;
+
+    }
+ 
+    .click_section button{
+        font-size:40px;
+        border-radius: 50%;
+        size: 50%;
+        color: rgb(28, 12, 12);
+        border: 1px solid rgb(23, 128, 127);
+        font-family: Arial, Helvetica, sans-serif;
+    }
+</style>
+
+<body>
+
+    <h3>Total_Clicks: <span id="click_count_span">{{clicks}}</span></h3>
+    <h3>Last Updated Date Time: <span id="last_update_span">{{last_update}}</span></h3>
+    
+
+
+
+    <div class="click_section">
+        <!-- <form id="click" action="/register_click" method="post"> -->
+            <button id="click-button" onclick="test_data()" type="submit" class="btn btn-outline-info">CLICK</button>
+        <!-- </form> -->
+    </div>
+
+    <script>
+        let clicks = document.getElementById("click-button")
+        let count = 0
+        async function test_data(){
+
+
+            let response = await fetch("/api/register_click", {
+                method: "POST"
+            })
+            if (response.status != 200) {
+                alert("Something went wrong, fix your POST request.")
+                return
+            }
+
+            let y = await response.json()
+            console.log(y)
+            document.getElementById("click_count_span").innerText = y['Total Clicks']
+            document.getElementById("last_update_span").innerText = y['Last_time']
+        }
+
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+<!-- 
+
+
+     body {
+            background-color: #f6f9fb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .login {
+            border: 2px solid rgba(255, 255, 255, 0.938);
+            width: 400px;
+            border-radius: 30px;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+ -->
