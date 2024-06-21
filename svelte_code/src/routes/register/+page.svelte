@@ -1,20 +1,5 @@
 <script lang="ts">
   import "$lib/style.css";
-  let intrested_topic: string[] = [];
-  let temp_topic = "";
-
-  function addTopics() {
-    let temp = temp_topic.trim();
-    if (temp && !intrested_topic.includes(temp)) {
-      intrested_topic.push(temp_topic)
-      temp_topic = "";
-      console.log(intrested_topic)
-    }
-  }
-
-  function removeTopic(remove_topic: string) {
-    intrested_topic = intrested_topic.filter((topic) => topic !== remove_topic);
-  }
 </script>
 
 <div class="box_1">
@@ -60,20 +45,9 @@
           <label><b>Enter Your Interested Topics</b></label>
           <input
             type="text"
-            bind:value={temp_topic}
-            on:keypress={(event) => event.key === "Enter" && addTopics()}
             placeholder="Enter Topic and Press Enter"
             name="topics"
           />
-        </div>
-
-        <div>
-          {#each intrested_topic as topic}
-            <div class="topic_display">
-              <span>{topic}</span>
-              <button on:click={() => removeTopic(topic)}>x</button>
-            </div>
-          {/each}
         </div>
       </div>
 
