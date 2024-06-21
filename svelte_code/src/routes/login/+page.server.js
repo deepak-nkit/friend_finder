@@ -7,6 +7,7 @@ import { error, json, redirect } from "@sveltejs/kit";
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ cookies }) {
+	// const id = cookies.get("id")
 	const token = cookies.get("session_token");
 	if (token !== undefined) {
 		const response = await fetch("http://localhost:8000/loged_in", {
@@ -42,7 +43,7 @@ export const actions = {
 		} else {
 			const data = await response.json();
 			let token = data.session_token;
-			console.log("****************", token);
+
 			event.cookies.set("session_token", token, {
 				maxAge: 3600 * 24 * 365 * 100,
 				path: "/",

@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, Response, HTTPException, Header, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
+from datetime import datetime
 import secrets
 
 
@@ -34,10 +35,11 @@ async def lifespan(app: FastAPI):
                     Username TEXT UNIQUE,
                     Email VARCHAR(255) NOT NULL UNIQUE, 
                     Password TEXT,
-                    pincode INTEGER,
+                    pincode INTEGER NOT NULL,
                     Name Text,
                     Number TEXT  UNIQUE,
-                    Address TEXT 
+                    Address TEXT,
+                    JoinedOn DATE
             );   
          """)
 
@@ -113,12 +115,14 @@ async def register_root(body: RegisterBody, request: Request):
     pincode = body.pincode  # topic = data["topics"]
     topics = [topic.strip() for topic in body.topics.split(",")]
     pass_hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    User_id = 0
     try:
         cur.execute(
             """
-                    INSERT INTO user (Username , Email , Password , Pincode) VALUES (?, ? ,?,?)
+                    INSERT INTO user (Username , Email , Password , Pincode , JoinedOn) VALUES (?, ? ,?,?,?)
                     """,
-            (username, email, pass_hashed, pincode),
+            (username, email, pass_hashed, pincode, current_datetime),
         )
         con.commit()
         cur.execute(
@@ -135,15 +139,24 @@ async def register_root(body: RegisterBody, request: Request):
                 con.commit()
 
         con.commit()
-
     except sqlite3.IntegrityError as e:
         if "UNIQUE" in str(e):
             raise HTTPException(
                 status_code=400, detail="Email or Username already |||||  registered"
             )
-        else:
-            raise e
-    return {"Message: User register Successfully"}
+    token = secrets.token_urlsafe(16)
+    cur.execute(
+        """
+                INSERT INTO session (User_id , Token) VALUES (? ,?)
+                """,
+        (User_id, token),
+    )
+    con.commit()
+    return {
+        "session_token": token,
+        "id": User_id,
+        "username": username,
+    }
 
 
 class LoginBody(BaseModel):
@@ -157,9 +170,10 @@ async def login_root(body: LoginBody, response: Response):
     password = body.password
     var1 = "SELECT Password FROM user WHERE email = ?"
     var2 = (email,)
-    cur.execute("SELECT id , Password FROM user WHERE email = ?", (email,))
+    cur.execute("SELECT id , Username , Password FROM user WHERE email = ?", (email,))
     test = cur.fetchone()
     id = test[0]
+    username = test[1]
     if test is None:
         raise HTTPException(status_code=400, detail="Invalid email or Password")
     else:
@@ -177,7 +191,11 @@ async def login_root(body: LoginBody, response: Response):
                     """,
             (id, token),
         )
-        return {"session_token": token}
+        return {
+            "session_token": token,
+            "id": id,
+            "username": username,
+        }
 
 
 class User:
@@ -190,7 +208,8 @@ class User:
 
 async def get_current_user(
     # authorization: Annotated[str, Header(convert_underscores=False)],) -> User:
-    authorization: Annotated[str, Header()],) -> User:
+    authorization: Annotated[str, Header()],
+) -> User:
     print("------------------------", authorization)
     token = authorization
     cur.execute(

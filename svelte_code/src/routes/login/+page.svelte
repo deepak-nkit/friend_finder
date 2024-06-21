@@ -1,6 +1,20 @@
-<script>
-  import "$lib/style.css";
+  <script>
+	/** @type {import('./$types').PageData} */
+	export let data;
+
+	/** @type {import('./$types').ActionData} */
+	export let form;
 </script>
+
+{#if form != null}
+	<p>Successfully logged in! Welcome back, {form}</p>
+{/if}
+
+<!-- <script> -->
+  <!-- import "$lib/style.css"; -->
+  <!-- export let  form; -->
+<!-- </script> -->
+<!-- {#if form?  } -->
 
 <div class="box_1">
   <span class="clos">

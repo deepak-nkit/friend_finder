@@ -19,7 +19,6 @@ export const actions = {
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(data),
 		});
-
 		if (!response.ok) {
 			return error(505, { message: "registration failed ! try again" });
 		} else {
