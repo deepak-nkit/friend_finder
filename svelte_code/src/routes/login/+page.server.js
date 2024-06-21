@@ -1,7 +1,5 @@
 import { error, json, redirect } from "@sveltejs/kit";
-
 /** @type {import('./$types').Actions} */
-
 /**
 ...  token check by server
 ...   
@@ -41,14 +39,10 @@ export const actions = {
 
 		if (!response.ok) {
 			return error(505, { message: "Invalid email or Password" });
-			// return {
-			// 	error: response.text(),
-			// 	"Status code": response.status,
-			// 	success: false,
-			// };
 		} else {
 			const data = await response.json();
 			let token = data.session_token;
+			console.log("****************", token);
 			event.cookies.set("session_token", token, {
 				maxAge: 3600 * 24 * 365 * 100,
 				path: "/",

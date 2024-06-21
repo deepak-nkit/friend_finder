@@ -1,7 +1,9 @@
-<!-- <script> -->
-  <!-- import './login.svelte'; -->
-  <!-- import './register.svelte'; -->
-<!-- </script> -->
+<form method="POST" action="?/logout">
+  <div class="logout">
+    <button type="submit">Logut</button>
+  </div>
+</form>
 
-<h1> Hii </h1>
-<p> this is </p>
+<div class="nav">
+  <h1>Hello User</h1>
+</div>

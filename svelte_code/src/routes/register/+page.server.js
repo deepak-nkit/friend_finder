@@ -12,7 +12,6 @@ export const actions = {
 		const pincode = form.get("pincode");
 		const topics = form.get("topics");
 
-		console.log(typeof topics);
 		let data = { username, email, password, pincode, topics };
 
 		const response = await fetch("http://localhost:8000/register", {

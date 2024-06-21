@@ -15,9 +15,6 @@ origins = [
     "http://localhost:8007",
     "http://localhost:5500",
 ]
-
-# last_time = None
-# test = 0
 con: sqlite3.Connection
 
 
@@ -100,17 +97,23 @@ async def home_page():
     return "Hello..!!"
 
 
+class RegisterBody(BaseModel):
+    username: str
+    email: str
+    password: str
+    pincode: int
+    topics: str
+
+
 @app.post("/register")
-async def register_root(request: Request, data: dict):
-    username = data["username"]
-    password = data["password"]
-    email = data["email"]
-    pincode = data["pincode"]
-    # topic = data["topics"]
-    topics = [topic.strip() for topic in data["topics"].split(",")]
+async def register_root(body: RegisterBody, request: Request):
+    username = body.username
+    password = body.password
+    email = body.email
+    pincode = body.pincode  # topic = data["topics"]
+    topics = [topic.strip() for topic in body.topics.split(",")]
     pass_hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
     try:
-        print("-------------------------->>>>>>>>>>:")
         cur.execute(
             """
                     INSERT INTO user (Username , Email , Password , Pincode) VALUES (?, ? ,?,?)
@@ -124,10 +127,7 @@ async def register_root(request: Request, data: dict):
         )
 
         row = cur.fetchone()
-        print(row)
-        print(type(row))
         User_id = row[0]
-        print(type(User_id))
         if len(topics) > 0:
             var1 = """ INSERT INTO topic (User_id , TopicName) VALUES (?, ?)"""
             for topic in topics:
@@ -137,9 +137,7 @@ async def register_root(request: Request, data: dict):
         con.commit()
 
     except sqlite3.IntegrityError as e:
-        print(e)
         if "UNIQUE" in str(e):
-            print("from here ")
             raise HTTPException(
                 status_code=400, detail="Email or Username already |||||  registered"
             )
@@ -148,42 +146,38 @@ async def register_root(request: Request, data: dict):
     return {"Message: User register Successfully"}
 
 
+class LoginBody(BaseModel):
+    email: str
+    password: str
+
+
 @app.post("/login")
-async def read_root(data: dict, response: Response):
-    email = data["email"]
-    password = data["password"]
-    print("pasws", password)
-    print("pasws-email", email)
+async def login_root(body: LoginBody, response: Response):
+    email = body.email
+    password = body.password
     var1 = "SELECT Password FROM user WHERE email = ?"
     var2 = (email,)
     cur.execute("SELECT id , Password FROM user WHERE email = ?", (email,))
     test = cur.fetchone()
     id = test[0]
     if test is None:
-        raise HTTPException(status_code=400, detail="Invalid email")
+        raise HTTPException(status_code=400, detail="Invalid email or Password")
     else:
         check = cur.execute(var1, var2)
         if check is None:
             raise HTTPException(status_code=400, detail="Invalid email or password")
         hashed_password = check.fetchone()[0]
-        print(hashed_password)
-        print("pasws", password)
         if not bcrypt.checkpw(password.encode("utf-8"), hashed_password):
             raise HTTPException(status_code=400, detail="Invalid email or password")
 
         token = secrets.token_urlsafe(16)
-
         cur.execute(
             """
                     INSERT INTO session (User_id , Token) VALUES (? ,?)
                     """,
             (id, token),
         )
-        response.set_cookie(
-            key="session_token", value=token, max_age=3600 * 24 * 365 * 200
-        )
-
-        return {"message": "Login successful"}
+        return {"session_token": token}
 
 
 class User:
@@ -195,10 +189,10 @@ class User:
 
 
 async def get_current_user(
-    authorization: Annotated[str, Header(convert_underscores=False)],
-) -> User:
-    print("8888888888888888", authorization)
-    token = authorization.split(" ")[1]
+    # authorization: Annotated[str, Header(convert_underscores=False)],) -> User:
+    authorization: Annotated[str, Header()],) -> User:
+    print("------------------------", authorization)
+    token = authorization
     cur.execute(
         "SELECT  user.Username , user.Email, session.User_id FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
         (token,),
@@ -221,11 +215,12 @@ async def loged_in(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user.user_id
 
 
-@app.get("/logout/")
+@app.post("/logout/")
 async def logout(current_user: Annotated[User, Depends(get_current_user)]):
     cur.execute("DELETE FROM session WHERE token = ?;", current_user.session_token)
     return current_user.session_token
 
 
+# @app.post
 if __name__ == "__main__":
     run(app, host="127.0.0.1", port=8006)
