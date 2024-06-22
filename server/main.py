@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 import sqlite3
 from pydantic import BaseModel
 from uvicorn import run
 from typing import Annotated
-from fastapi import FastAPI, Request, Response, HTTPException, Header, Depends
+from fastapi import FastAPI, Request, Response, HTTPException, Header, Depends, status
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
@@ -164,33 +165,41 @@ class LoginBody(BaseModel):
     password: str
 
 
+#  Login User by using email or password
+
+
 @app.post("/login")
 async def login_root(body: LoginBody, response: Response):
     email = body.email
     password = body.password
     var1 = "SELECT Password FROM user WHERE email = ?"
     var2 = (email,)
-    cur.execute("SELECT id , Username , Password FROM user WHERE email = ?", (email,))
+    cur.execute(
+        "SELECT id , Username , Password FROM user WHERE email = ?", (email,)
+    )  # check the email in DATABASE
     test = cur.fetchone()
     id = test[0]
     username = test[1]
     if test is None:
-        raise HTTPException(status_code=400, detail="Invalid email or Password")
+        raise HTTPException(status_code=400, detail="Invalid email")
     else:
         check = cur.execute(var1, var2)
         if check is None:
             raise HTTPException(status_code=400, detail="Invalid email or password")
         hashed_password = check.fetchone()[0]
         if not bcrypt.checkpw(password.encode("utf-8"), hashed_password):
-            raise HTTPException(status_code=400, detail="Invalid email or password")
+            raise HTTPException(status_code=400, detail="Invalid password")
 
         token = secrets.token_urlsafe(16)
+        print("^^^^^^^^^^^^^^^", token)
         cur.execute(
             """
                     INSERT INTO session (User_id , Token) VALUES (? ,?)
                     """,
             (id, token),
         )
+        con.commit()
+
         return {
             "session_token": token,
             "id": id,
@@ -207,39 +216,141 @@ class User:
 
 
 async def get_current_user(
-    # authorization: Annotated[str, Header(convert_underscores=False)],) -> User:
     authorization: Annotated[str, Header()],
 ) -> User:
     print("------------------------", authorization)
     token = authorization
     cur.execute(
-        "SELECT  user.Username , user.Email, session.User_id FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
+        "SELECT  user.Username , user.Email, session.User_id  FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
         (token,),
     )
     row = cur.fetchone()
     if row != None:
         user = User(
-            user_id=row["User_id"],
-            username=row["Username"],
-            email=row["Email"],
+            user_id=row[2],
+            username=row[0],
+            email=row[1],
+            # user_id=row["User_id"],
+            # username=row["Username"],
+            # email=row["Email"],
             token=token,
         )
         return user
     else:
-        raise HTTPException(status_code=401, detail="Login First")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="NOT Authorized Please Login First!",
+        )
+
+
+#  Check the user is loge in or not
 
 
 @app.get("/loged_in/")
 async def loged_in(current_user: Annotated[User, Depends(get_current_user)]):
-    return current_user.user_id
+    return {
+        "username": current_user.username,
+        "email": current_user.email,
+        "user_id": current_user.user_id,
+    }
+
+
+#  Logout user
 
 
 @app.post("/logout/")
 async def logout(current_user: Annotated[User, Depends(get_current_user)]):
-    cur.execute("DELETE FROM session WHERE token = ?;", current_user.session_token)
+    print("*****logout")
+    cur.execute("DELETE FROM session WHERE token = ?;", (current_user.session_token,))
+    con.commit()
     return current_user.session_token
 
 
-# @app.post
+#  Suggestion root to show the data to user at Home page
+
+
+# @dataclass
+# class Item:
+#     username: str
+#     topic:list
+#     day_ago: int
+
+@app.get("/suggestion")
+async def suggestion(
+   authorization: Annotated[str, Header()],
+):
+    # async def suggestion(current_user: Annotated[User, Depends(get_current_user)]):
+
+    # Find User Pincode for finding  users in  the same area 
+    cur.execute(
+        "SELECT   user.Pincode, user.Username ,  session.User_id  FROM session JOIN user ON user.id = session.User_id  WHERE session.Token = ?",
+        (authorization,),
+    )
+    row = cur.fetchone()
+    pincode = row[0]
+    username = row[1]
+    id = row[2]
+    print(f"current user------ pincode:{pincode} , u_id:{id} , username:{username}")
+    print()
+
+    # Select the topic of the currenct user...
+    cur.execute(
+        "SELECT TopicName FROM topic WHERE User_id = ?",
+        (id,),
+    )
+    row = cur.fetchall()
+    # Select the User Id's which has the  same topic...
+    cur.execute(
+        """
+            SELECT DISTINCT User_id from topic where Topicname IN (SELECT TopicName from topic WHERE User_id = ?) AND User_id != (?)
+        """, (id,id,),)
+    user_id = cur.fetchall()
+    print("user_id-----", user_id)
+    print()
+    sug = []
+
+    # select topic fetchall
+
+    for ids in user_id:
+        cur.execute(
+            """
+                SELECT username , JoinedOn FROM user WHERE id = ? 
+            """,(ids)
+        )
+        test = cur.fetchone()
+        # username = row[0]
+        # joined_at = row[1]
+        joined_date = datetime.strptime(test[1], '%Y-%m-%d %H:%M:%S')
+        days_ago = (datetime.now() - joined_date).days
+        # data["joined"] = f"{days_ago} days ago"
+        print(f"username:{test[0]} , days:{days_ago}")
+        print()
+        print(test,"******")
+        print()
+        cur.execute(
+            """
+                SELECT TopicName FROM topic WHERE User_id = ? 
+            """,(ids)
+        )
+        row = cur.fetchall()
+        print(row)
+        print()
+        dic = {
+            "username":test[0],
+            "days_age":days_ago,
+            "topic":row
+        }
+        print(dic)
+        print()
+        sug.append(dic)
+        print("list , sug ---", sug)
+        print()
+
+    temp = {"suggestion":sug}
+
+    print("temp*}**",temp, sug)
+    print(type(temp))
+    return temp
+
 if __name__ == "__main__":
     run(app, host="127.0.0.1", port=8006)
