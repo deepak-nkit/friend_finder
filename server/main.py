@@ -63,19 +63,12 @@ async def lifespan(app: FastAPI):
                        
                 );
           """)
-
-    # except sqlite3.OperationalError as e:
-    #     if "already exists" in str(e):
-    #             print("\nThe table is already exist Skip the Creating Step: \n")
-    #     else:
-    #          raise e
     data = con.execute("SELECT * FROM user")
     yield
 
 
 app = FastAPI(lifespan=lifespan, debug=True)
 # app = FastAPI()
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -85,16 +78,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# app.mount("/my_other_files", StaticFiles(directory="/web"), name="template")
 
-# template = Jinja2Templates(directory="/web/template")
-
-
-# def hashed_password(password):
-#     password_byte = password.encode("utf-8")
-#     salt = bcrypt.gensalt()
-#     hashed_pass = bcrypt.hashpw(password_byte , salt)
-#     return hashed_pass
 @app.get("/")
 async def home_page():
     return "Hello..!!"
@@ -191,7 +175,7 @@ async def login_root(body: LoginBody, response: Response):
             raise HTTPException(status_code=400, detail="Invalid password")
 
         token = secrets.token_urlsafe(16)
-        print("^^^^^^^^^^^^^^^", token)
+        print("***************", token)
         cur.execute(
             """
                     INSERT INTO session (User_id , Token) VALUES (? ,?)
@@ -218,7 +202,7 @@ class User:
 async def get_current_user(
     authorization: Annotated[str, Header()],
 ) -> User:
-    print("------------------------", authorization)
+    print("----****---***----***---", authorization)
     token = authorization
     cur.execute(
         "SELECT  user.Username , user.Email, session.User_id  FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
@@ -230,9 +214,6 @@ async def get_current_user(
             user_id=row[2],
             username=row[0],
             email=row[1],
-            # user_id=row["User_id"],
-            # username=row["Username"],
-            # email=row["Email"],
             token=token,
         )
         return user
@@ -268,30 +249,24 @@ async def logout(current_user: Annotated[User, Depends(get_current_user)]):
 
 #  Suggestion root to show the data to user at Home page
 
-
 # @dataclass
 # class Item:
 #     username: str
 #     topic:list
 #     day_ago: int
 
+
 @app.get("/suggestion")
 async def suggestion(
-   authorization: Annotated[str, Header()],
+    authorization: Annotated[str, Header()],
 ):
-    # async def suggestion(current_user: Annotated[User, Depends(get_current_user)]):
-
-    # Find User Pincode for finding  users in  the same area 
+    # Find User Pincode for finding  users in  the same area
     cur.execute(
         "SELECT   user.Pincode, user.Username ,  session.User_id  FROM session JOIN user ON user.id = session.User_id  WHERE session.Token = ?",
         (authorization,),
     )
     row = cur.fetchone()
-    pincode = row[0]
-    username = row[1]
     id = row[2]
-    print(f"current user------ pincode:{pincode} , u_id:{id} , username:{username}")
-    print()
 
     # Select the topic of the currenct user...
     cur.execute(
@@ -299,58 +274,42 @@ async def suggestion(
         (id,),
     )
     row = cur.fetchall()
+
     # Select the User Id's which has the  same topic...
     cur.execute(
         """
             SELECT DISTINCT User_id from topic where Topicname IN (SELECT TopicName from topic WHERE User_id = ?) AND User_id != (?)
-        """, (id,id,),)
+        """,
+        (
+            id,
+            id,
+        ),
+    )
     user_id = cur.fetchall()
-    print("user_id-----", user_id)
-    print()
     sug = []
 
     # select topic fetchall
-
     for ids in user_id:
         cur.execute(
             """
                 SELECT username , JoinedOn FROM user WHERE id = ? 
-            """,(ids)
+            """,
+            (ids),
         )
         test = cur.fetchone()
-        # username = row[0]
-        # joined_at = row[1]
-        joined_date = datetime.strptime(test[1], '%Y-%m-%d %H:%M:%S')
+        joined_date = datetime.strptime(test[1], "%Y-%m-%d %H:%M:%S")
         days_ago = (datetime.now() - joined_date).days
-        # data["joined"] = f"{days_ago} days ago"
-        print(f"username:{test[0]} , days:{days_ago}")
-        print()
-        print(test,"******")
-        print()
         cur.execute(
             """
                 SELECT TopicName FROM topic WHERE User_id = ? 
-            """,(ids)
+            """,
+            (ids),
         )
         row = cur.fetchall()
-        print(row)
-        print()
-        dic = {
-            "username":test[0],
-            "days_age":days_ago,
-            "topic":row
-        }
-        print(dic)
-        print()
+        dic = {"username": test[0], "days_ago": days_ago, "topic": row}
         sug.append(dic)
-        print("list , sug ---", sug)
-        print()
+    return {"suggestion": sug}
 
-    temp = {"suggestion":sug}
-
-    print("temp*}**",temp, sug)
-    print(type(temp))
-    return temp
 
 if __name__ == "__main__":
     run(app, host="127.0.0.1", port=8006)
