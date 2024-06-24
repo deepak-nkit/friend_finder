@@ -63,6 +63,19 @@ async def lifespan(app: FastAPI):
                        
                 );
           """)
+
+    cur.execute("""
+                CREATE TABLE IF NOT EXISTS message(
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        From_userid INTEGER,
+                        To_userid INTEGER,
+                        Sent_at DATE,
+                        FOREIGN KEY(User_id) REFERENCES user(id)
+                       
+                );
+          """)
+
+
     data = con.execute("SELECT * FROM user")
     yield
 
@@ -162,11 +175,11 @@ async def login_root(body: LoginBody, response: Response):
         "SELECT id , Username , Password FROM user WHERE email = ?", (email,)
     )  # check the email in DATABASE
     test = cur.fetchone()
-    id = test[0]
-    username = test[1]
     if test is None:
         raise HTTPException(status_code=400, detail="Invalid email")
     else:
+        id = test[0]
+        username = test[1]
         check = cur.execute(var1, var2)
         if check is None:
             raise HTTPException(status_code=400, detail="Invalid email or password")
