@@ -2,6 +2,22 @@ import { error, json, redirect } from "@sveltejs/kit";
 
 /** @type {import('./$types').Actions} */
 
+/** @type {import('./$types').PageServerLoad} */
+export async function load({ cookies }) {
+	// const id = cookies.get("id")
+	const token = cookies.get("session_token");
+	if (token !== undefined && token !== "") {
+		const response = await fetch("http://localhost:8000/loged_in", {
+			method: "GET",
+			headers: {
+				authorization: token,
+			},
+		});
+		if (response.ok) {
+			redirect(303, "/");
+		}
+	}
+}
 /** @type {import('./$types').Actions} */
 export const actions = {
 	default: async (event) => {

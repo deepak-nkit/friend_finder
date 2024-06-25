@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 import sqlite3
 from pydantic import BaseModel
 from uvicorn import run
 from typing import Annotated
-from fastapi import FastAPI, Request, Response, HTTPException, Header, Depends
+from fastapi import FastAPI, Request, Response, HTTPException, Header, Depends, status
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
@@ -63,18 +64,23 @@ async def lifespan(app: FastAPI):
                 );
           """)
 
-    # except sqlite3.OperationalError as e:
-    #     if "already exists" in str(e):
-    #             print("\nThe table is already exist Skip the Creating Step: \n")
-    #     else:
-    #          raise e
+    cur.execute("""
+                CREATE TABLE IF NOT EXISTS message(
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        From_userid INTEGER,
+                        To_userid INTEGER,
+                        Sent_at DATE,
+                        FOREIGN KEY(From_userid) REFERENCES user(id)
+                       
+                );
+          """)
+
     data = con.execute("SELECT * FROM user")
     yield
 
 
 app = FastAPI(lifespan=lifespan, debug=True)
 # app = FastAPI()
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -84,16 +90,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# app.mount("/my_other_files", StaticFiles(directory="/web"), name="template")
 
-# template = Jinja2Templates(directory="/web/template")
-
-
-# def hashed_password(password):
-#     password_byte = password.encode("utf-8")
-#     salt = bcrypt.gensalt()
-#     hashed_pass = bcrypt.hashpw(password_byte , salt)
-#     return hashed_pass
 @app.get("/")
 async def home_page():
     return "Hello..!!"
@@ -114,7 +111,9 @@ async def register_root(body: RegisterBody, request: Request):
     email = body.email
     pincode = body.pincode  # topic = data["topics"]
     topics = [topic.strip() for topic in body.topics.split(",")]
-    pass_hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    pass_hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode(
+        "utf-8"
+    )
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     User_id = 0
     try:
@@ -164,82 +163,199 @@ class LoginBody(BaseModel):
     password: str
 
 
+#  Login User by using email or password
+
+
 @app.post("/login")
 async def login_root(body: LoginBody, response: Response):
     email = body.email
     password = body.password
-    var1 = "SELECT Password FROM user WHERE email = ?"
-    var2 = (email,)
-    cur.execute("SELECT id , Username , Password FROM user WHERE email = ?", (email,))
-    test = cur.fetchone()
-    id = test[0]
-    username = test[1]
-    if test is None:
-        raise HTTPException(status_code=400, detail="Invalid email or Password")
-    else:
-        check = cur.execute(var1, var2)
-        if check is None:
-            raise HTTPException(status_code=400, detail="Invalid email or password")
-        hashed_password = check.fetchone()[0]
-        if not bcrypt.checkpw(password.encode("utf-8"), hashed_password):
-            raise HTTPException(status_code=400, detail="Invalid email or password")
+    cur.execute("SELECT id, username, Password FROM user WHERE email = ?", (email,))
+    row = cur.fetchone()
 
-        token = secrets.token_urlsafe(16)
-        cur.execute(
-            """
-                    INSERT INTO session (User_id , Token) VALUES (? ,?)
-                    """,
-            (id, token),
-        )
-        return {
-            "session_token": token,
-            "id": id,
-            "username": username,
-        }
+    if row is None:
+        raise HTTPException(status_code=400, detail="Invalid email or password")
+
+    id, username, hashed_password = row
+
+    if not bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8")):
+        raise HTTPException(status_code=400, detail="Invalid password")
+
+    token = secrets.token_urlsafe(16)
+    cur.execute(
+        """
+                INSERT INTO session (User_id , Token) VALUES (? ,?)
+                """,
+        (id, token),
+    )
+    con.commit()
+
+    return {
+        "session_token": token,
+        "id": id,
+        "username": username,
+    }
 
 
 class User:
-    def __init__(self, user_id: int, email: str, username: str, token: str) -> None:
+    def __init__(
+        self, user_id: int, email: str, username: str, pincode: int, token: str
+    ) -> None:
         self.username = username
         self.user_id = user_id
         self.email = email
+        self.pincode = pincode
         self.session_token = token
 
 
 async def get_current_user(
-    # authorization: Annotated[str, Header(convert_underscores=False)],) -> User:
     authorization: Annotated[str, Header()],
 ) -> User:
-    print("------------------------", authorization)
+    print("----****---***----***---", authorization)
     token = authorization
     cur.execute(
-        "SELECT  user.Username , user.Email, session.User_id FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
+        "SELECT  user.Username , user.Email,  user.Pincode, session.User_id  FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
         (token,),
     )
     row = cur.fetchone()
     if row != None:
         user = User(
-            user_id=row["User_id"],
-            username=row["Username"],
-            email=row["Email"],
+            username=row[0],
+            email=row[1],
+            pincode=row[2],
+            user_id=row[3],
             token=token,
         )
         return user
     else:
-        raise HTTPException(status_code=401, detail="Login First")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="NOT Authorized Please Login First!",
+        )
+
+
+#  Check the user is loge in or not
 
 
 @app.get("/loged_in/")
 async def loged_in(current_user: Annotated[User, Depends(get_current_user)]):
-    return current_user.user_id
+    return {
+        "username": current_user.username,
+        "email": current_user.email,
+        "user_id": current_user.user_id,
+    }
+
+
+#  Logout user
 
 
 @app.post("/logout/")
 async def logout(current_user: Annotated[User, Depends(get_current_user)]):
-    cur.execute("DELETE FROM session WHERE token = ?;", current_user.session_token)
+    print("*****logout")
+    cur.execute("DELETE FROM session WHERE token = ?;", (current_user.session_token,))
+    con.commit()
     return current_user.session_token
 
 
-# @app.post
+# select the topic , and other information of the Other users in same area.....
+
+
+def get_user(user_id: int) -> dict:
+    cur.execute(
+        """
+                SELECT username , JoinedOn FROM user WHERE id = ? 
+            """,
+        (user_id,),
+    )
+    test = cur.fetchone()
+    joined_date = datetime.strptime(test[1], "%Y-%m-%d %H:%M:%S")
+    days_ago = (datetime.now() - joined_date).days
+    cur.execute(
+        """
+                SELECT TopicName FROM topic WHERE User_id = ? 
+            """,
+        (user_id,),
+    )
+    row = cur.fetchall()
+    dic = {"username": test[0], "days_ago": days_ago, "topic": row}
+    return dic
+
+
+#  Suggestion root to show the data to user at Home page
+
+# @dataclass
+# class Item:
+#     username: str
+#     topic:list
+#     day_ago: int
+
+
+@app.get("/suggestion")
+async def suggestion(
+    current_user: Annotated[User, Depends(get_current_user)],
+    # authorization: Annotated[str, Header()],
+):
+    # Select the User Id's which has the  same topic...
+    cur.execute(
+        """
+            SELECT DISTINCT User_id from topic where Topicname IN (SELECT TopicName from topic WHERE User_id = ?) AND User_id != (?)
+        """,
+        (
+            current_user.user_id,
+            current_user.user_id,
+        ),
+    )
+    user_ids = cur.fetchall()
+    sug = []
+
+    for id in user_ids:
+        sug.append(get_user(id[0]))
+    return {"suggestion": sug}
+
+
+# Data of the user whose profile is  checked out ( current user)
+# class Profilebody(BaseModel):
+#     username: str
+
+# A user Profile data....
+
+
+@app.get("/user_profile/{username}")
+async def user_profile(
+    username: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    print()
+    print(username)
+    print()
+    cur.execute(
+        """
+            SELECT user.id , user.Name , user.email , user.Pincode , user.Joinedon , user.Address , topic.User_id  FROM  user JOIN topic ON topic.User_id = user.id WHERE user.Username = (?)
+        """,
+        (username,),
+    )
+    row = cur.fetchone()
+    cur.execute(
+        """
+            SELECT TopicName  FROM topic WHERE User_id = (?)
+        """,
+        (row[6],),
+    )
+    topic = cur.fetchall()
+    profile_user_data = {
+        "username": username,
+        "id": row[0],
+        "name": row[1],
+        "email": row[2],
+        "pincode": row[3],
+        "days_ago": row[4],
+        "address": row[5],
+        "user_id": row[6],
+        "topics": topic,
+    }
+    print(profile_user_data)
+    return profile_user_data
+
+
 if __name__ == "__main__":
     run(app, host="127.0.0.1", port=8006)
