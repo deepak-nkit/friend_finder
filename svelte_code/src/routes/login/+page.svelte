@@ -1,4 +1,5 @@
   <script>
+  import "$lib/style.css";
 	/** @type {import('./$types').PageData} */
 	export let data;
 
@@ -6,16 +7,11 @@
 	export let form;
 </script>
 
-{#if form != null}
-	<p>Successfully logged in! Welcome back, {form}</p>
+{#if form}
+  {#if form.message}
+    <h3 class:color-red={!form.success}>{form.message}</h3>
+  {/if}
 {/if}
-
-<!-- <script> -->
-  <!-- import "$lib/style.css"; -->
-  <!-- export let  form; -->
-<!-- </script> -->
-<!-- {#if form?  } -->
-
 <div class="box_1">
   <span class="clos">
     <ion-icon name="close-outline"></ion-icon>
@@ -55,3 +51,9 @@
     </form>
   </div>
 </div>
+
+<style>
+  .color-red {
+    color: red
+  }
+</style>

@@ -70,11 +70,10 @@ async def lifespan(app: FastAPI):
                         From_userid INTEGER,
                         To_userid INTEGER,
                         Sent_at DATE,
-                        FOREIGN KEY(User_id) REFERENCES user(id)
+                        FOREIGN KEY(From_userid) REFERENCES user(id)
                        
                 );
           """)
-
 
     data = con.execute("SELECT * FROM user")
     yield
@@ -112,7 +111,9 @@ async def register_root(body: RegisterBody, request: Request):
     email = body.email
     pincode = body.pincode  # topic = data["topics"]
     topics = [topic.strip() for topic in body.topics.split(",")]
-    pass_hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    pass_hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode(
+        "utf-8"
+    )
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     User_id = 0
     try:
@@ -169,46 +170,41 @@ class LoginBody(BaseModel):
 async def login_root(body: LoginBody, response: Response):
     email = body.email
     password = body.password
-    var1 = "SELECT Password FROM user WHERE email = ?"
-    var2 = (email,)
+    cur.execute("SELECT id, username, Password FROM user WHERE email = ?", (email,))
+    row = cur.fetchone()
+
+    if row is None:
+        raise HTTPException(status_code=400, detail="Invalid email or password")
+
+    id, username, hashed_password = row
+
+    if not bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8")):
+        raise HTTPException(status_code=400, detail="Invalid password")
+
+    token = secrets.token_urlsafe(16)
     cur.execute(
-        "SELECT id , Username , Password FROM user WHERE email = ?", (email,)
-    )  # check the email in DATABASE
-    test = cur.fetchone()
-    if test is None:
-        raise HTTPException(status_code=400, detail="Invalid email")
-    else:
-        id = test[0]
-        username = test[1]
-        check = cur.execute(var1, var2)
-        if check is None:
-            raise HTTPException(status_code=400, detail="Invalid email or password")
-        hashed_password = check.fetchone()[0]
-        if not bcrypt.checkpw(password.encode("utf-8"), hashed_password):
-            raise HTTPException(status_code=400, detail="Invalid password")
+        """
+                INSERT INTO session (User_id , Token) VALUES (? ,?)
+                """,
+        (id, token),
+    )
+    con.commit()
 
-        token = secrets.token_urlsafe(16)
-        print("***************", token)
-        cur.execute(
-            """
-                    INSERT INTO session (User_id , Token) VALUES (? ,?)
-                    """,
-            (id, token),
-        )
-        con.commit()
-
-        return {
-            "session_token": token,
-            "id": id,
-            "username": username,
-        }
+    return {
+        "session_token": token,
+        "id": id,
+        "username": username,
+    }
 
 
 class User:
-    def __init__(self, user_id: int, email: str, username: str, token: str) -> None:
+    def __init__(
+        self, user_id: int, email: str, username: str, pincode: int, token: str
+    ) -> None:
         self.username = username
         self.user_id = user_id
         self.email = email
+        self.pincode = pincode
         self.session_token = token
 
 
@@ -218,15 +214,16 @@ async def get_current_user(
     print("----****---***----***---", authorization)
     token = authorization
     cur.execute(
-        "SELECT  user.Username , user.Email, session.User_id  FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
+        "SELECT  user.Username , user.Email,  user.Pincode, session.User_id  FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
         (token,),
     )
     row = cur.fetchone()
     if row != None:
         user = User(
-            user_id=row[2],
             username=row[0],
             email=row[1],
+            pincode=row[2],
+            user_id=row[3],
             token=token,
         )
         return user
@@ -260,6 +257,30 @@ async def logout(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user.session_token
 
 
+# select the topic , and other information of the Other users in same area.....
+
+
+def get_user(user_id: int) -> dict:
+    cur.execute(
+        """
+                SELECT username , JoinedOn FROM user WHERE id = ? 
+            """,
+        (user_id,),
+    )
+    test = cur.fetchone()
+    joined_date = datetime.strptime(test[1], "%Y-%m-%d %H:%M:%S")
+    days_ago = (datetime.now() - joined_date).days
+    cur.execute(
+        """
+                SELECT TopicName FROM topic WHERE User_id = ? 
+            """,
+        (user_id,),
+    )
+    row = cur.fetchall()
+    dic = {"username": test[0], "days_ago": days_ago, "topic": row}
+    return dic
+
+
 #  Suggestion root to show the data to user at Home page
 
 # @dataclass
@@ -271,57 +292,69 @@ async def logout(current_user: Annotated[User, Depends(get_current_user)]):
 
 @app.get("/suggestion")
 async def suggestion(
-    authorization: Annotated[str, Header()],
+    current_user: Annotated[User, Depends(get_current_user)],
+    # authorization: Annotated[str, Header()],
 ):
-    # Find User Pincode for finding  users in  the same area
-    cur.execute(
-        "SELECT   user.Pincode, user.Username ,  session.User_id  FROM session JOIN user ON user.id = session.User_id  WHERE session.Token = ?",
-        (authorization,),
-    )
-    row = cur.fetchone()
-    id = row[2]
-
-    # Select the topic of the currenct user...
-    cur.execute(
-        "SELECT TopicName FROM topic WHERE User_id = ?",
-        (id,),
-    )
-    row = cur.fetchall()
-
     # Select the User Id's which has the  same topic...
     cur.execute(
         """
             SELECT DISTINCT User_id from topic where Topicname IN (SELECT TopicName from topic WHERE User_id = ?) AND User_id != (?)
         """,
         (
-            id,
-            id,
+            current_user.user_id,
+            current_user.user_id,
         ),
     )
-    user_id = cur.fetchall()
+    user_ids = cur.fetchall()
     sug = []
 
-    # select topic fetchall
-    for ids in user_id:
-        cur.execute(
-            """
-                SELECT username , JoinedOn FROM user WHERE id = ? 
-            """,
-            (ids),
-        )
-        test = cur.fetchone()
-        joined_date = datetime.strptime(test[1], "%Y-%m-%d %H:%M:%S")
-        days_ago = (datetime.now() - joined_date).days
-        cur.execute(
-            """
-                SELECT TopicName FROM topic WHERE User_id = ? 
-            """,
-            (ids),
-        )
-        row = cur.fetchall()
-        dic = {"username": test[0], "days_ago": days_ago, "topic": row}
-        sug.append(dic)
+    for id in user_ids:
+        sug.append(get_user(id[0]))
     return {"suggestion": sug}
+
+
+# Data of the user whose profile is  checked out ( current user)
+# class Profilebody(BaseModel):
+#     username: str
+
+# A user Profile data....
+
+
+@app.get("/user_profile/{username}")
+async def user_profile(
+    username: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    print()
+    print(username)
+    print()
+    cur.execute(
+        """
+            SELECT user.id , user.Name , user.email , user.Pincode , user.Joinedon , user.Address , topic.User_id  FROM  user JOIN topic ON topic.User_id = user.id WHERE user.Username = (?)
+        """,
+        (username,),
+    )
+    row = cur.fetchone()
+    cur.execute(
+        """
+            SELECT TopicName  FROM topic WHERE User_id = (?)
+        """,
+        (row[6],),
+    )
+    topic = cur.fetchall()
+    profile_user_data = {
+        "username": username,
+        "id": row[0],
+        "name": row[1],
+        "email": row[2],
+        "pincode": row[3],
+        "days_ago": row[4],
+        "address": row[5],
+        "user_id": row[6],
+        "topics": topic,
+    }
+    print(profile_user_data)
+    return profile_user_data
 
 
 if __name__ == "__main__":

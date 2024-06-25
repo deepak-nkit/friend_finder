@@ -20,8 +20,9 @@ export const load = async ({ cookies }) => {
 		return error(500, "Somthing Went Wrong");
 	}
 	const data = await response.json();
-	return data;
+	return data ;
 };
+
 
 /** @type {import('./$types').Actions} */
 export const actions = {
@@ -34,10 +35,13 @@ export const actions = {
 					authorization: token,
 				},
 			});
+
+
 			event.cookies.set("session_token", "", {
 				maxAge: 1,
 				path: "/",
 			});
+			// No need to redirect here, load function executes after action and handles redirection to login page
 		}
 	},
 };
