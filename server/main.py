@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from uvicorn import run
 from typing import Annotated
 from fastapi import FastAPI, Request, Response, HTTPException, Header, Depends, status
-from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
 from datetime import datetime
