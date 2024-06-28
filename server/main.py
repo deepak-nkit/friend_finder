@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from uvicorn import run
 from typing import Annotated
 from fastapi import FastAPI, Request, Response, HTTPException, Header, Depends, status
-from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
 from datetime import datetime
@@ -16,6 +15,8 @@ origins = [
     "http://localhost",
     "http://localhost:8007",
     "http://localhost:5500",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 con: sqlite3.Connection
 
