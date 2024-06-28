@@ -1,4 +1,5 @@
 import { error, json, redirect } from "@sveltejs/kit";
+import { Backend_Base_URL } from "$lib/backend_url";
 
 /** @type {import('./$types').Actions} */
 
@@ -8,7 +9,7 @@ export const load = async ({ cookies }) => {
 	if (token === undefined || token == "") {
 		redirect(303, "/login");
 	}
-	const response = await fetch("http://localhost:8000/suggestion", {
+	const response = await fetch(`${Backend_Base_URL}:8000/suggestion`, {
 		method: "GET",
 		headers: {
 			authorization: token,
@@ -20,22 +21,20 @@ export const load = async ({ cookies }) => {
 		return error(500, "Somthing Went Wrong");
 	}
 	const data = await response.json();
-	return data ;
+	return data;
 };
-
 
 /** @type {import('./$types').Actions} */
 export const actions = {
 	logout: async (event) => {
 		const token = event.cookies.get("session_token");
 		if (token !== undefined) {
-			const response = await fetch("http://localhost:8000/logout", {
+			const response = await fetch(`${Backend_Base_URL}:8000/logout`, {
 				method: "POST",
 				headers: {
 					authorization: token,
 				},
 			});
-
 
 			event.cookies.set("session_token", "", {
 				maxAge: 1,
