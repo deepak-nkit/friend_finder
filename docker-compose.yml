@@ -1,0 +1,25 @@
+services:
+  svelte:
+    image: svelte_doc
+    environment:
+      - "ORIGIN=http://127.0.0.1:3000"
+    ports:
+      - "3000:3000"
+    networks:
+      - network_net
+
+  server:
+    image: server_doc
+    networks:
+      - network_net
+    volumes:
+      - friend_finder_volume:/database
+    environment:
+      - "DATABASE_FILE=/database/xyz.db"
+    command: fastapi run main.py
+
+networks:
+  network_net:
+
+volumes:
+  friend_finder_volume:

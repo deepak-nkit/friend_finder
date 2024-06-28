@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import sqlite3
 from pydantic import BaseModel
 from uvicorn import run
+import os
 from typing import Annotated
 from fastapi import FastAPI, Request, Response, HTTPException, Header, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,7 +28,12 @@ async def lifespan(app: FastAPI):
     global data
     global cur
 
-    con = sqlite3.connect("friend_finder.db")
+    db_path = "friend_finder.db"
+
+    if "DATABASE_FILE" in os.environ:
+        db_path = os.environ['DATABASE_FILE']
+
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
     # date = datetime
 
@@ -77,6 +83,8 @@ async def lifespan(app: FastAPI):
           """)
 
     data = con.execute("SELECT * FROM user")
+    data = data.fetchall()
+    print("Total users:", len(data))
     yield
 
 
