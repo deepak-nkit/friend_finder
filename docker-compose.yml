@@ -1,12 +1,21 @@
+# Upload images on server:
+#        docker save friend_finder/frontend | docker --context prod load
+#        docker save friend_finder/backend | docker --context prod load
+#        NOTE: remember to update this dockerfile with new image names
+# To Deploy: docker --context prod stack deploy -c docker-compose.yml friend_finder
 services:
   svelte:
     image: svelte_doc
     environment:
-      - "ORIGIN=http://127.0.0.1:3000"
+      - "ORIGIN=https://friends.nkit.dev"
     ports:
       - "3000:3000"
     networks:
       - network_net
+      - caddy
+    labels:
+      caddy: friends.nkit.dev
+      caddy.reverse_proxy: "{{upstreams 3000}}"
 
   server:
     image: server_doc
@@ -20,6 +29,8 @@ services:
 
 networks:
   network_net:
+  caddy:
+    external: true
 
 volumes:
   friend_finder_volume:
