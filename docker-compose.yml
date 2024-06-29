@@ -2,10 +2,11 @@
 #        docker save friend_finder/frontend | docker --context prod load
 #        docker save friend_finder/backend | docker --context prod load
 #        NOTE: remember to update this dockerfile with new image names
-# To Deploy: docker --context prod stack deploy -c docker-compose.yml friend_finder
+# To Deploy: docker --context prod stack deploy -c docker-compose.yml friend_finder --prune
+#       `--prune`: delete stuff no longer in use.
 services:
-  svelte:
-    image: svelte_doc
+  frontend:
+    image: friend_finder/frontend:v1
     environment:
       - "ORIGIN=https://friends.nkit.dev"
     ports:
@@ -17,8 +18,9 @@ services:
       caddy: friends.nkit.dev
       caddy.reverse_proxy: "{{upstreams 3000}}"
 
+  # TODO: change this to "backend" once the svelte code supports environment variable to configure backend url
   server:
-    image: server_doc
+    image: friend_finder/backend:v1
     networks:
       - network_net
     volumes:

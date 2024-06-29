@@ -118,6 +118,7 @@ async def register_root(body: RegisterBody, request: Request):
     username = body.username
     password = body.password
     email = body.email
+    print(username)
     pincode = body.pincode  # topic = data["topics"]
     topics = [topic.strip() for topic in body.topics.split(",")]
     pass_hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode(
@@ -220,7 +221,7 @@ class User:
 async def get_current_user(
     authorization: Annotated[str, Header()],
 ) -> User:
-    print("----****---***----***---", authorization)
+    print("----From--get----current--User fun()----", authorization)
     token = authorization
     cur.execute(
         "SELECT  user.Username , user.Email,  user.Pincode, session.User_id  FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
@@ -277,7 +278,8 @@ def get_user(user_id: int) -> dict:
         (user_id,),
     )
     test = cur.fetchone()
-    joined_date = datetime.strptime(test[1], "%Y-%m-%d %H:%M:%S")
+    date = test[1].strip()
+    joined_date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
     days_ago = (datetime.now() - joined_date).days
     cur.execute(
         """
@@ -323,8 +325,6 @@ async def suggestion(
 
 
 # Data of the user whose profile is  checked out ( current user)
-# class Profilebody(BaseModel):
-#     username: str
 
 # A user Profile data....
 
@@ -339,7 +339,7 @@ async def user_profile(
     print()
     cur.execute(
         """
-            SELECT user.id , user.Name , user.email , user.Pincode , user.Joinedon , user.Address , topic.User_id  FROM  user JOIN topic ON topic.User_id = user.id WHERE user.Username = (?)
+            SELECT user.id , user.Name , user.email , user.Pincode , user.Joinedon , user.Address , topic.User_id  FROM  user JOIN topic ON topic.User_id = user.id WHERE user.Username = ?
         """,
         (username,),
     )
@@ -365,6 +365,77 @@ async def user_profile(
     print(profile_user_data)
     return profile_user_data
 
+@app.get("/message")
+async def message(
+    current_user: Annotated[User, Depends(get_current_user)],
+    # authorization: Annotated[str, Header()],
+):
+    # Select the User Id's which has the  same topic...
+    cur.execute(
+        """
+            SELECT DISTINCT User_id from topic where Topicname IN (SELECT TopicName from topic WHERE User_id = ?) AND User_id != (?)
+        """,
+        (
+            current_user.user_id,
+            current_user.user_id,
+        ),
+    )
+    user_ids = cur.fetchall()
+    sug = []
+
+    for id in user_ids:
+        sug.append(get_user(id[0]))
+    return {"suggestion": sug}
+
+
+'''
+            --------------
+            username,     \
+            email          \
+            pincode,       >>>>get_current_user ()
+            user_id,      /  
+            token,       /
+            -------------
+
+            Name,
+            Topic,
+            Age_on_plateform,
+            Address,
+            Contact,
+            
+    date = test[1].strip()
+    joined_date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+    days_ago = (datetime.now() - joined_date).days
+'''
+
+@app.get("/profile/")
+async def profile(current_user: Annotated[User, Depends(get_current_user)]):
+    cur.execute ("""
+            SELECT Name ,Joinedon , Address , Number  FROM  user WHERE Username = ?
+    """,(current_user.username,),)
+
+    row_all = cur.fetchone()
+
+    cur.execute ("""
+            SELECT TopicName FROM topic WHERE user_id = ?
+    """,(current_user.user_id,),)
+
+    topic_all = cur.fetchall()
+    days = datetime.strptime(row_all[1] , "%Y-%m-%d %H:%M:%S")
+    days_ago = (datetime.now() - days).days
+    user_profile = {
+        "username":current_user.username,
+        "email":current_user.email,
+        "pincode":current_user.pincode,
+        "user_id":current_user.user_id,
+        "name":row_all[0],
+        "address":row_all[2],
+        "contact":row_all[3],
+        "days_ago":days_ago,
+        "topic":topic_all,
+        
+    }
+    return user_profile
 
 if __name__ == "__main__":
     run(app, host="127.0.0.1", port=8006)

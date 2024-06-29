@@ -19,15 +19,22 @@ export async function load({ cookies }) {
 		}
 	}
 }
+
 /** @type {import('./$types').Actions} */
 export const actions = {
 	default: async (event) => {
 		const form = await event.request.formData();
-		const username = form.get("username");
+		let username = form.get("username");
+		console.log("*******",username)
 		const email = form.get("email");
 		const password = form.get("password");
 		const pincode = form.get("pincode");
 		const topics = form.get("topics");
+
+		// if (username.includes(' ')){
+		// 	return error (100 , {message: "Space not allowed"})
+		// }
+		// username = encodeURIComponent(username)
 
 		let data = { username, email, password, pincode, topics };
 

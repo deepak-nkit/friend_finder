@@ -15,13 +15,22 @@
       <h4>Joined: {days_ago} Days Ago</h4>
       <h4>Topics: {topics}</h4>
     </div>
-    <form method="post"  action="/message" >
-      <textarea name="message" placeholder="Type Message" class="message" ></textarea>
-      <button type="submit">Send</button>
-    </form>
   </div>
+
+  <div>
+    <button name="chat" on:click|stopPropagation={(e) => {}} >chat</button>
+    <button name="chat"on:click|stopPropagation={(e) => {}}>Add friend</button>
+   </div>
+
 </div>
 
+<!-- <div> -->
+    <!-- <form method="post"  action="/message"  > -->
+      <!-- <textarea name="message" placeholder="Type Message" class="message" ></textarea> -->
+      <!-- <input name="message" placeholder="Type message"  > -->
+      <!-- <button type="submit" >Send</button> -->
+    <!-- </form> -->
+<!-- </div> -->
 <style>
   .main:hover {
     background-color: #fafafa;
