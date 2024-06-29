@@ -12,6 +12,7 @@
     <h3 class:color-red={!form.success}>{form.message}</h3>
   {/if}
 {/if}
+
 <div class="box_1">
   <span class="clos">
     <ion-icon name="close-outline"></ion-icon>

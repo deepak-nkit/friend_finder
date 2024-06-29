@@ -43,4 +43,23 @@ export const actions = {
 			// No need to redirect here, load function executes after action and handles redirection to login page
 		}
 	},
+	// message: async (event) => {
+	// 	const token = event.cookies.get("session_token");
+	// 	if (token !== undefined) {
+	// 		const response = await fetch(`${Backend_Base_URL}:8000/message`, {
+	// 			method: "POST",
+	// 			headers: {
+	// 				authorization: token,
+	// 			},
+	// 			body:{
+	// 				message,
+	// 			}
+	// 		});
+
+	// 		event.cookies.set("session_token", "", {
+	// 			maxAge: 1,
+	// 			path: "/",
+	// 		});
+	// 		// No need to redirect here, load function executes after action and handles redirection to login page
+	// 	}
 };
