@@ -1,35 +1,37 @@
 <script lang="ts">
-
   import type { PageData } from "./$types";
-    import UserBox from "./userBox.svelte";
+  import UserBox from "./userBox.svelte";
 
-  import Home from './home.svelte'
+  import Home from "./home.svelte";
+  import Layout from "./+layout.svelte";
   /** @type {import('./$types').PageData} */
   export let data: PageData;
-
+  export let form;
 </script>
 
-<Home></Home>
-<br />
-<div class="nav">
-  <h1>Hello User</h1>
+<div class="main">
+  <Home></Home>
+  <br />
+  <div class="nav">
+    <h1>Hello User</h1>
+  </div>
+
+  {#each data.suggestion as suggest}
+    <UserBox
+      username={suggest.username}
+      days_ago={suggest.days_ago}
+      topics={suggest.topic}
+      user_id={suggest.user_id}
+      submitted={form?.success}
+    ></UserBox>
+  {/each}
 </div>
 
-<!-- <form method="POST" action="?/logout"> -->
-  <!-- <div class="logout"> -->
-    <!-- <button type="submit">Logut</button> -->
-  <!-- </div> -->
-<!-- </form> -->
-
-{#each data.suggestion as suggest}
-      <a href={`/user/${suggest.username}`}>
-      <UserBox username = {suggest.username}  days_ago = {suggest.days_ago}  topics = {suggest.topic}></UserBox> 
-      </a>
-{/each}
-
 <style>
-  a {
-    text-decoration: none;
-    color: black;
+  .nav {
+    width: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 </style>

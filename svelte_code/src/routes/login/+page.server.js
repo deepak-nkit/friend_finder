@@ -4,7 +4,6 @@ import { Backend_Base_URL } from "$lib/backend_url";
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ cookies }) {
-	// const id = cookies.get("id")
 	const token = cookies.get("session_token");
 	if (token !== undefined && token !== "") {
 		const response = await fetch(`${Backend_Base_URL}:8000/loged_in`, {

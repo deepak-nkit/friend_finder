@@ -1,5 +1,6 @@
 import { error, json, redirect } from "@sveltejs/kit";
 import { Backend_Base_URL } from "$lib/backend_url";
+import { applyAction } from "$app/forms";
 
 /** @type {import('./$types').Actions} */
 
@@ -43,23 +44,35 @@ export const actions = {
 			// No need to redirect here, load function executes after action and handles redirection to login page
 		}
 	},
-	// message: async (event) => {
-	// 	const token = event.cookies.get("session_token");
-	// 	if (token !== undefined) {
-	// 		const response = await fetch(`${Backend_Base_URL}:8000/message`, {
-	// 			method: "POST",
-	// 			headers: {
-	// 				authorization: token,
-	// 			},
-	// 			body:{
-	// 				message,
-	// 			}
-	// 		});
 
-	// 		event.cookies.set("session_token", "", {
-	// 			maxAge: 1,
-	// 			path: "/",
-	// 		});
-	// 		// No need to redirect here, load function executes after action and handles redirection to login page
-	// 	}
+	add_friend: async ({ cookies, request }) => {
+		const token = cookies.get("session_token");
+
+		const form_data = await request.formData();
+		const username = form_data.get("username");
+		if (token === undefined) {
+			redirect(303, "/login");
+		}
+		const response = await fetch(`${Backend_Base_URL}:8000/add_friend`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				authorization: token,
+			},
+			body: JSON.stringify({
+				username,
+			}),
+		});
+		console.log(response);
+		if (!response.ok) {
+			return error(505, {
+				message: `Some error occurred. [status=${response.status}]`,
+			});
+		} else {
+			let data = await response.json();
+			return {
+				success: true,
+			};
+		}
+	},
 };
