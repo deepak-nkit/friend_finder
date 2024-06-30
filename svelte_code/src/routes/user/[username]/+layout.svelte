@@ -5,8 +5,7 @@
 <style>
   div {
     padding: 5px;
-    width:400px;
-    
-  }
+    width:300px;
+   }
 </style>
 

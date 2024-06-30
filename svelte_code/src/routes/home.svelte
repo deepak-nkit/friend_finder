@@ -1,5 +1,6 @@
 <script>
   import ff_1 from '$lib/static/ff_1.png'
+  import message02 from '$lib/static/message02.png'
 </script>
 
 <div class="navbar">
@@ -15,8 +16,8 @@
     <div class="box">
       <!-- Messages Icon -->
       <div class="message">
-        <a href = "/message">
-          <img src="https://img.icons8.com/?size=100&id=382f4IJWLbtB&format=png&color=000000" alt="messages">
+        <a href = "/messenger/">
+          <img src={message02} alt="messages">
         </a>
       </div>
 
@@ -72,7 +73,7 @@
 
     .message img,
     .profile img {
-        height: 50px;
+        height: 40px;
         width: 50px;
         border-radius: 50%;
         margin: 0 15px;
