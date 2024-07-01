@@ -44,4 +44,4 @@ export const actions = {
 			// No need to redirect here, load function executes after action and handles redirection to login page
 		}
 	},
-	}
+};
