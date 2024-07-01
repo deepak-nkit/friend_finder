@@ -18,11 +18,12 @@
 
   {#each data.suggestion as suggest}
     <UserBox
+      name={suggest.name}
       username={suggest.username}
       days_ago={suggest.days_ago}
       topics={suggest.topic}
       user_id={suggest.user_id}
-      submitted={form?.success}
+      submitted={Boolean(form?.success)}
     ></UserBox>
   {/each}
 </div>

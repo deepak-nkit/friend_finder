@@ -1,72 +1,54 @@
 <script lang="ts">
-  export let username:string
+  export let data;
 </script>
 
-  <slot />
 <div class="container">
   <div class="side_box">
     <div class="user_box">
       <img src="" alt="profile" class="profile" />
-      <div class="username">Saini_saini</div>
+      <div class="username">{data.sidebar_data.current_username}</div>
     </div>
     <div class="tag">message</div>
-    <div class="usernames">
-      <p>{username}</p>
-      <br>
-    </div>
-    <div class="content">
-      <div class="message"></div>
-    </div>
+    {#each data.sidebar_data.user as user}
+      <a href={`/messenger/${user.user_id}`}>
+        <div class="usernames">
+          <p>{user.username}</p>
+          <br />
+        </div>
+      </a>
+    {/each}
   </div>
+  <slot />
 </div>
 
 <style>
-
-  :global(body){
-    padding:0;
-    margin:0;
-    background-colour:#cb5f5f;
-  }
-  .container{
+  .container {
     height: 100vh;
     display: flex;
   }
-  .side_box{
-    width:300px;
+  .side_box {
+    width: 300px;
     display: flex;
     flex-direction: column;
     padding: 10px;
-    background-color:#EDEDFF;
+    background-color: rgb(243, 237, 229);
   }
-  .user_box{
+  .user_box {
     display: flex;
     align-items: center;
     padding: 10px;
     border-bottom: 1px solid black;
   }
 
-  .profile{
+  .profile {
     height: 40px;
-    width:40px;
-    border-radius:50%;
+    width: 40px;
+    border-radius: 50%;
     margin-right: 10px;
   }
 
-  .username{
+  .username {
     font-size: 15px;
-    font-weight:bold;
+    font-weight: bold;
   }
-   
-  .main{
-    display: flex;
-    flex-direction: column; 
-    align-items: center;
-    justify-content: center;
-    background-color:#a2b79f ;
-    }
-  .message{
-    text-align: center;
-    font-size:20xp;
-  }
-
 </style>

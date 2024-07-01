@@ -74,10 +74,10 @@ async def lifespan(app: FastAPI):
     cur.execute("""
                 CREATE TABLE IF NOT EXISTS message(
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        From_userid INTEGER,
-                        To_userid INTEGER,
-                        Sent_at DATE,
-                        Message TEXT ,
+                        From_userid INTEGER NOT NULL,
+                        To_userid INTEGER NOT NULL,
+                        Sent_at DATE NOT NULL,
+                        Message TEXT NOT NULL,
                         FOREIGN KEY(From_userid) REFERENCES user(id)
 
                        
@@ -87,8 +87,8 @@ async def lifespan(app: FastAPI):
     cur.execute("""
                 CREATE TABLE IF NOT EXISTS friends(
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        Main_userid INTEGER,
-                        Other_userid INTEGER,
+                        Main_userid INTEGER NOT NULL,
+                        Other_userid INTEGER NOT NULL,
                         FOREIGN KEY(Main_userid) REFERENCES user(id)
                        
                 );
@@ -308,7 +308,7 @@ def get_user(user_id: int) -> dict:
         (user_id,),
     )
     row = cur.fetchall()
-    dic = {"username": test[0], "user_id":user_id, "days_ago": days_ago, "topic": row}
+    dic = {"username": test[0], "user_id": user_id, "days_ago": days_ago, "topic": row}
     return dic
 
 
@@ -347,7 +347,7 @@ async def suggestion(
             """
                         SELECT id FROM user WHERE id = ? AND pincode = ?
                     """,
-            (t, pincode)
+            (t, pincode),
         )
         row = cur.fetchone()
         if row:
@@ -395,9 +395,11 @@ async def user_profile(
     }
     return profile_user_data
 
+
 class MessageBody(BaseModel):
-    main_userid:int
-    other_userid:int
+    main_userid: int
+    other_userid: int
+
 
 @app.get("/message")
 async def message(
@@ -418,28 +420,6 @@ async def message(
     for id in user_ids:
         sug.append(get_user(id[0]))
     return {"suggestion": sug}
-
-
-"""
-            --------------
-            username,     \
-            email          \
-            pincode,       >>>>get_current_user ()
-            user_id,      /  
-            token,       /
-            -------------
-
-            Name,
-            Topic,
-            Age_on_plateform,
-            Address,
-            Contact,
-            
-    date = test[1].strip()
-    joined_date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-    days_ago = (datetime.now() - joined_date).days
-"""
-
 
 @app.get("/profile/")
 async def profile(current_user: Annotated[User, Depends(get_current_user)]):
@@ -476,6 +456,9 @@ async def profile(current_user: Annotated[User, Depends(get_current_user)]):
     return user_profile
 
 
+#  Add friend to list
+
+
 class AddFriend(BaseModel):
     username: str
 
@@ -510,6 +493,9 @@ async def add_friend(
     }
 
 
+
+#  get data of friend list which shows on sidebar of the messenger...
+
 @app.get("/inbox/")
 async def inbox(
     current_user: Annotated[User, Depends(get_current_user)],
@@ -526,21 +512,20 @@ async def inbox(
 
     for id in row:
         cur.execute(
-        """
+            """
             SELECT Username  FROM user WHERE id = (?)
         """,
-        (id[0],))
+            (id[0],),
+        )
         res = cur.fetchone()
-        print(res)
-        inbox_username.append({"username":res[0]})
-    print(inbox_username)
-    return {
-        'user':inbox_username
-        }
+        inbox_username.append({"username": res[0], "user_id": id[0]})
+    return {"user": inbox_username, "current_username": current_user.username}
 
+
+# get the messages ...
 
 @app.get("/get_message/{user_id}")
-async def message(
+async def get_message(
     user_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
 ):
@@ -548,25 +533,53 @@ async def message(
     to_userid = user_id
     cur.execute(
         """
-            SELECT Message FROM message WHERE from_userid = ?
-        """,
-        (from_userid,),
+            SELECT * FROM message WHERE (From_userid = ? AND To_userid = ?) OR (From_userid = ? AND To_userid = ?)
+        """,(from_userid, to_userid , to_userid  ,from_userid,),
     )
     row = cur.fetchall()
-    print(row)
+    data = {}
+    message_data = []
+    for msg in row:
+        print(msg)
+        data = {
+            'sent_by':msg[1],
+            'sent_to':msg[2],
+            'sent_at':msg[3],
+            'message':msg[4],
+        }
+        message_data.append(data)
+    print()
+    print("^^^^^^^ user msg^^^^^",message_data)
+    return{
+        'message':message_data,
+        }
 
-    profile_user_data = {
-        "username": username,
-        "id": row[0],
-        "name": row[1],
-        "email": row[2],
-        "pincode": row[3],
-        "days_ago": row[4],
-        "address": row[5],
-        "user_id": row[6],
-        "topics": topic,
+ 
+ # store messages 
+
+class MessageSet(BaseModel):
+    message: str
+
+@app.post("/message_set/{user_id}")
+async def message_set(
+    body: MessageSet, user_id:int,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    message = body.message
+    from_userid = current_user.user_id
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cur.execute(
+        """
+                    INSERT  INTO message (From_userid , To_userid , Sent_at , Message) VALUES (?,?,?,?)
+                """,
+        (from_userid , user_id , current_datetime , message),
+    )
+    con.commit()
+    return {
+        'sent_to': user_id,
+        'success':True
     }
-    return profile_user_data
+
 
 if __name__ == "__main__":
     run(app, host="127.0.0.1", port=8006)
