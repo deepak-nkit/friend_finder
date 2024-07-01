@@ -2,7 +2,6 @@
   export let username: String;
   export let days_ago: Date;
   export let topics: String[];
-  
 </script>
 
 <div class="main">
@@ -15,7 +14,7 @@
       <h4>Joined: {days_ago} Days Ago</h4>
       <h4>Topics: {topics}</h4>
     </div>
-    <form method="post"  action="/message" >
+    <form>
       <textarea name="message" placeholder="Type Message" class="message" ></textarea>
       <button type="submit">Send</button>
     </form>
