@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import sqlite3
 from pydantic import BaseModel
 from uvicorn import run
+import os
 from typing import Annotated
 from fastapi import FastAPI, Request, Response, HTTPException, Header, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,8 @@ origins = [
     "http://localhost",
     "http://localhost:8007",
     "http://localhost:5500",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 con: sqlite3.Connection
 
@@ -25,7 +28,12 @@ async def lifespan(app: FastAPI):
     global data
     global cur
 
-    con = sqlite3.connect("friend_finder.db")
+    db_path = "friend_finder.db"
+
+    if "DATABASE_FILE" in os.environ:
+        db_path = os.environ["DATABASE_FILE"]
+
+    con = sqlite3.connect(db_path)
     cur = con.cursor()
     # date = datetime
 
@@ -66,15 +74,28 @@ async def lifespan(app: FastAPI):
     cur.execute("""
                 CREATE TABLE IF NOT EXISTS message(
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        From_userid INTEGER,
-                        To_userid INTEGER,
-                        Sent_at DATE,
+                        From_userid INTEGER NOT NULL,
+                        To_userid INTEGER NOT NULL,
+                        Sent_at DATE NOT NULL,
+                        Message TEXT NOT NULL,
                         FOREIGN KEY(From_userid) REFERENCES user(id)
+
                        
                 );
           """)
 
+    cur.execute("""
+                CREATE TABLE IF NOT EXISTS friends(
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Main_userid INTEGER NOT NULL,
+                        Other_userid INTEGER NOT NULL,
+                        FOREIGN KEY(Main_userid) REFERENCES user(id)
+                       
+                );
+          """)
     data = con.execute("SELECT * FROM user")
+    data = data.fetchall()
+    print("Total users:", len(data))
     yield
 
 
@@ -108,8 +129,10 @@ async def register_root(body: RegisterBody, request: Request):
     username = body.username
     password = body.password
     email = body.email
+    print(username)
     pincode = body.pincode  # topic = data["topics"]
-    topics = [topic.strip() for topic in body.topics.split(",")]
+    topics = [(topic.lower()).strip() for topic in body.topics.split(",")]
+
     pass_hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode(
         "utf-8"
     )
@@ -198,22 +221,29 @@ async def login_root(body: LoginBody, response: Response):
 
 class User:
     def __init__(
-        self, user_id: int, email: str, username: str, pincode: int, token: str
+        self,
+        user_id: int,
+        email: str,
+        username: str,
+        pincode: int,
+        name: str,
+        token: str,
     ) -> None:
         self.username = username
         self.user_id = user_id
         self.email = email
         self.pincode = pincode
+        self.name = name
         self.session_token = token
 
 
 async def get_current_user(
     authorization: Annotated[str, Header()],
 ) -> User:
-    print("----****---***----***---", authorization)
+    print("----From--get----current--User fun()----", authorization)
     token = authorization
     cur.execute(
-        "SELECT  user.Username , user.Email,  user.Pincode, session.User_id  FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
+        "SELECT  user.Username , user.Email,  user.Pincode, user.Name, session.User_id  FROM session JOIN user ON user.id = session.User_id WHERE session.Token = ?",
         (token,),
     )
     row = cur.fetchone()
@@ -222,7 +252,8 @@ async def get_current_user(
             username=row[0],
             email=row[1],
             pincode=row[2],
-            user_id=row[3],
+            name=row[3],
+            user_id=row[4],
             token=token,
         )
         return user
@@ -267,7 +298,8 @@ def get_user(user_id: int) -> dict:
         (user_id,),
     )
     test = cur.fetchone()
-    joined_date = datetime.strptime(test[1], "%Y-%m-%d %H:%M:%S")
+    date = test[1].strip()
+    joined_date = datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
     days_ago = (datetime.now() - joined_date).days
     cur.execute(
         """
@@ -276,7 +308,7 @@ def get_user(user_id: int) -> dict:
         (user_id,),
     )
     row = cur.fetchall()
-    dic = {"username": test[0], "days_ago": days_ago, "topic": row}
+    dic = {"username": test[0], "user_id": user_id, "days_ago": days_ago, "topic": row}
     return dic
 
 
@@ -304,17 +336,29 @@ async def suggestion(
             current_user.user_id,
         ),
     )
+
     user_ids = cur.fetchall()
     sug = []
+    ids = []
+    pincode = current_user.pincode
+    for t in user_ids:
+        t = t[0]
+        cur.execute(
+            """
+                        SELECT id FROM user WHERE id = ? AND pincode = ?
+                    """,
+            (t, pincode),
+        )
+        row = cur.fetchone()
+        if row:
+            ids.append(row[0])
 
-    for id in user_ids:
-        sug.append(get_user(id[0]))
+    for id in ids:
+        sug.append(get_user(id))
     return {"suggestion": sug}
 
 
 # Data of the user whose profile is  checked out ( current user)
-# class Profilebody(BaseModel):
-#     username: str
 
 # A user Profile data....
 
@@ -324,12 +368,9 @@ async def user_profile(
     username: str,
     current_user: Annotated[User, Depends(get_current_user)],
 ):
-    print()
-    print(username)
-    print()
     cur.execute(
         """
-            SELECT user.id , user.Name , user.email , user.Pincode , user.Joinedon , user.Address , topic.User_id  FROM  user JOIN topic ON topic.User_id = user.id WHERE user.Username = (?)
+            SELECT user.id , user.Name , user.email , user.Pincode , user.Joinedon , user.Address , topic.User_id  FROM  user JOIN topic ON topic.User_id = user.id WHERE user.Username = ?
         """,
         (username,),
     )
@@ -352,8 +393,192 @@ async def user_profile(
         "user_id": row[6],
         "topics": topic,
     }
-    print(profile_user_data)
     return profile_user_data
+
+
+class MessageBody(BaseModel):
+    main_userid: int
+    other_userid: int
+
+
+@app.get("/message")
+async def message(
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    cur.execute(
+        """
+            SELECT DISTINCT User_id from topic where Topicname IN (SELECT TopicName from topic WHERE User_id = ?) AND User_id != (?)
+        """,
+        (
+            current_user.user_id,
+            current_user.user_id,
+        ),
+    )
+    user_ids = cur.fetchall()
+    sug = []
+
+    for id in user_ids:
+        sug.append(get_user(id[0]))
+    return {"suggestion": sug}
+
+@app.get("/profile/")
+async def profile(current_user: Annotated[User, Depends(get_current_user)]):
+    cur.execute(
+        """
+            SELECT Name ,Joinedon , Address , Number  FROM  user WHERE Username = ?
+    """,
+        (current_user.username,),
+    )
+
+    row_all = cur.fetchone()
+
+    cur.execute(
+        """
+            SELECT TopicName FROM topic WHERE user_id = ?
+    """,
+        (current_user.user_id,),
+    )
+
+    topic_all = cur.fetchall()
+    days = datetime.strptime(row_all[1], "%Y-%m-%d %H:%M:%S")
+    days_ago = (datetime.now() - days).days
+    user_profile = {
+        "username": current_user.username,
+        "email": current_user.email,
+        "pincode": current_user.pincode,
+        "user_id": current_user.user_id,
+        "name": row_all[0],
+        "address": row_all[2],
+        "contact": row_all[3],
+        "days_ago": days_ago,
+        "topic": topic_all,
+    }
+    return user_profile
+
+
+#  Add friend to list
+
+
+class AddFriend(BaseModel):
+    username: str
+
+
+@app.post("/add_friend/")
+async def add_friend(
+    body: AddFriend,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    username = body.username
+    token = current_user.session_token
+    cur.execute("SELECT User_id FROM session WHERE token = ?", (token,))
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=400, detail="Something wrong try again")
+
+    main_user_id = row[0]
+    cur.execute("SELECT id FROM user WHERE Username = ?", (username,))
+    row = cur.fetchone()
+    friend_user_id = row[0]
+    cur.execute(
+        """
+                    INSERT  INTO friends (Main_userid , Other_userid) VALUES (? , ?)
+                """,
+        (main_user_id, friend_user_id),
+    )
+    con.commit()
+
+    return {
+        main_user_id,
+        friend_user_id,
+    }
+
+
+
+#  get data of friend list which shows on sidebar of the messenger...
+
+@app.get("/inbox/")
+async def inbox(
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    inbox_username = []
+    cur.execute(
+        """
+            SELECT DISTINCT Other_userid FROM  friends WHERE Main_userid = ?
+        """,
+        (current_user.user_id,),
+    )
+
+    row = cur.fetchall()
+
+    for id in row:
+        cur.execute(
+            """
+            SELECT Username  FROM user WHERE id = (?)
+        """,
+            (id[0],),
+        )
+        res = cur.fetchone()
+        inbox_username.append({"username": res[0], "user_id": id[0]})
+    return {"user": inbox_username, "current_username": current_user.username}
+
+
+# get the messages ...
+
+@app.get("/get_message/{user_id}")
+async def get_message(
+    user_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    from_userid = current_user.user_id
+    to_userid = user_id
+    cur.execute(
+        """
+            SELECT * FROM message WHERE (From_userid = ? AND To_userid = ?) OR (From_userid = ? AND To_userid = ?)
+        """,(from_userid, to_userid , to_userid  ,from_userid,),
+    )
+    row = cur.fetchall()
+    data = {}
+    message_data = []
+    for msg in row:
+        print(msg)
+        data = {
+            'sent_by':msg[1],
+            'sent_to':msg[2],
+            'sent_at':msg[3],
+            'message':msg[4],
+        }
+        message_data.append(data)
+    print()
+    print("^^^^^^^ user msg^^^^^",message_data)
+    return{
+        'message':message_data,
+        }
+
+ 
+ # store messages 
+
+class MessageSet(BaseModel):
+    message: str
+
+@app.post("/message_set/{user_id}")
+async def message_set(
+    body: MessageSet, user_id:int,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    message = body.message
+    from_userid = current_user.user_id
+    current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cur.execute(
+        """
+                    INSERT  INTO message (From_userid , To_userid , Sent_at , Message) VALUES (?,?,?,?)
+                """,
+        (from_userid , user_id , current_datetime , message),
+    )
+    con.commit()
+    return {
+        'sent_to': user_id,
+        'success':True
+    }
 
 
 if __name__ == "__main__":

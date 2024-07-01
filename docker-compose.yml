@@ -1,0 +1,38 @@
+# Upload images on server:
+#        docker save friend_finder/frontend | docker --context prod load
+#        docker save friend_finder/backend | docker --context prod load
+#        NOTE: remember to update this dockerfile with new image names
+# To Deploy: docker --context prod stack deploy -c docker-compose.yml friend_finder --prune
+#       `--prune`: delete stuff no longer in use.
+services:
+  frontend:
+    image: friend_finder/frontend:v1
+    environment:
+      - "ORIGIN=https://friends.nkit.dev"
+    ports:
+      - "3000:3000"
+    networks:
+      - network_net
+      - caddy
+    labels:
+      caddy: friends.nkit.dev
+      caddy.reverse_proxy: "{{upstreams 3000}}"
+
+  # TODO: change this to "backend" once the svelte code supports environment variable to configure backend url
+  server:
+    image: friend_finder/backend:v1
+    networks:
+      - network_net
+    volumes:
+      - friend_finder_volume:/database
+    environment:
+      - "DATABASE_FILE=/database/xyz.db"
+    command: fastapi run main.py
+
+networks:
+  network_net:
+  caddy:
+    external: true
+
+volumes:
+  friend_finder_volume:

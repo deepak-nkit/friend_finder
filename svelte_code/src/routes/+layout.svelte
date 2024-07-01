@@ -1,10 +1,26 @@
+<script>
+  import "nprogress/nprogress.css";
+  import NProgress from "nprogress";
+  import { navigating } from "$app/stores";
+
+  NProgress.configure({
+    // Full list: https://github.com/rstacruz/nprogress#configuration
+    minimum: 0.16,
+  });
+
+  $: {
+    if ($navigating) {
+      NProgress.start();
+    } else NProgress.done();
+  }
+</script>
+
 <div class="main">
   <div class="navbar">
-    <a href="/login">
-      Login
-    </a>
+    <a href="/login"> Login </a>
     <a href="/register"> Register </a>
   </div>
+
   <div>
     <slot />
   </div>
@@ -24,7 +40,7 @@
   }
   .navbar {
     box-shadow: 0 10px 3px -10px gray;
-    background: #EDEDFF;
+    background: #ededff;
     /*gap: 20px;*/
     width: 100vw;
     display: flex;
@@ -33,16 +49,16 @@
     height: 50px;
   }
   .navbar > a {
-  box-sizing: border-box;
-        height: 100%;
-        text-decoration: none;
-        color: black;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 15px;
+    box-sizing: border-box;
+    height: 100%;
+    text-decoration: none;
+    color: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px;
   }
   .navbar > a:hover {
-    background-color: #CDCDED;
+    background-color: #cdcded;
   }
 </style>

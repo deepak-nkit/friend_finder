@@ -1,12 +1,12 @@
 import { error, json, redirect } from "@sveltejs/kit";
+import { Backend_Base_URL } from "$lib/backend_url";
 /** @type {import('./$types').Actions} */
 
 /** @type {import('./$types').PageServerLoad} */
 export async function load({ cookies }) {
-	// const id = cookies.get("id")
 	const token = cookies.get("session_token");
 	if (token !== undefined && token !== "") {
-		const response = await fetch("http://localhost:8000/loged_in", {
+		const response = await fetch(`${Backend_Base_URL}:8000/loged_in`, {
 			method: "GET",
 			headers: {
 				authorization: token,
@@ -24,7 +24,7 @@ export const actions = {
 		const form = await event.request.formData();
 		const email = form.get("email");
 		const password = form.get("password");
-		const response = await fetch("http://localhost:8000/login", {
+		const response = await fetch(`${Backend_Base_URL}:8000/login`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
