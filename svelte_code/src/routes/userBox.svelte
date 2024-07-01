@@ -2,10 +2,10 @@
   export let username: String;
   export let days_ago: Date;
   export let topics: String[];
-  export let name: string;
+  export let name: string | null;
   export let user_id: number;
- /** @type {import('./$types').ActionData} */
-	export let submitted: Boolean;
+  /** @type {import('./$types').ActionData} */
+  export let submitted: Boolean;
 </script>
 
 <a href={`/user/${username}`}>
@@ -16,7 +16,7 @@
         <h3>UserName : {username}</h3>
         <h4>Joined: {days_ago} Days Ago</h4>
         <h4>Topics: {topics}</h4>
-        <h4>user_id: {user_id}</h4>
+        <!-- <h4>user_id: {user_id}</h4> -->
       </div>
     </div>
   </div>
@@ -24,7 +24,7 @@
 
 <div>
   {#if submitted}
-      <button disabled>Sent</button>      
+    <button disabled>Sent</button>
   {:else}
     <form action="?/add_friend" method="POST">
       <input type="hidden" name="username" value={username} />
@@ -33,11 +33,7 @@
   {/if}
 </div>
 
-<a href="/chat/{user_id}">
-  <button>
-  Chat
-</button></a>
-
+<a href={`/messenger/${user_id}`}> <button> Chat </button></a>
 
 <style>
   .main:hover {

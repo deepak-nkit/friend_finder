@@ -15,9 +15,9 @@ export async function load({ cookies }) {
 			return error(500, "Somthing Went Wrong");
 		} else {
 			const data = await response.json();
-			console.log(data);
-
-			return {data};
+			return {
+				sidebar_data: data,
+			};
 		}
 	}
 }
