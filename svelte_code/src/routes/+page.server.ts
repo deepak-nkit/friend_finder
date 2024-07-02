@@ -1,16 +1,15 @@
 import { error, json, redirect } from "@sveltejs/kit";
-import { Backend_Base_URL } from "$lib/backend_url";
 import { applyAction } from "$app/forms";
+import type { PageServerLoad } from './$types';
 
-/** @type {import('./$types').Actions} */
 
-/** @type {import('./$types').PageServerLoad} */
-export const load = async ({ cookies }) => {
+export const load: PageServerLoad = async ({ cookies }) => {
 	const token = cookies.get("session_token");
 	if (token === undefined || token == "") {
 		redirect(303, "/login");
 	}
-	const response = await fetch(`${Backend_Base_URL}:8000/suggestion`, {
+
+	const response = await fetch(`${BACKEND_BASE_URL}:8000/suggestion`, {
 		method: "GET",
 		headers: {
 			authorization: token,
@@ -30,7 +29,7 @@ export const actions = {
 	logout: async (event) => {
 		const token = event.cookies.get("session_token");
 		if (token !== undefined) {
-			const response = await fetch(`${Backend_Base_URL}:8000/logout`, {
+			const response = await fetch(`${BACKEND_BASE_URL}:8000/logout`, {
 				method: "POST",
 				headers: {
 					authorization: token,
@@ -53,7 +52,7 @@ export const actions = {
 		if (token === undefined) {
 			redirect(303, "/login");
 		}
-		const response = await fetch(`${Backend_Base_URL}:8000/add_friend`, {
+		const response = await fetch(`${BACKEND_BASE_URL}:8000/add_friend`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
@@ -65,7 +64,7 @@ export const actions = {
 		});
 		console.log(response);
 		if (!response.ok) {
-			return error(505, {
+			return error(500, {
 				message: `Some error occurred. [status=${response.status}]`,
 			});
 		} else {

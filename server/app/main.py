@@ -1,15 +1,18 @@
 from contextlib import asynccontextmanager
 import sqlite3
+from typing import Literal
 from dataclasses import dataclass
 import sqlite3
 from pydantic import BaseModel
 from typing import Optional
 import sqlalchemy
 from sqlalchemy import Engine
+import sqlalchemy.exc
 from uvicorn import run
 import os
 from typing import Annotated
 from fastapi import FastAPI, Request, Response, HTTPException, Header, Depends, status
+from fastapi.routing import APIRoute
 from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
 from datetime import datetime
@@ -68,7 +71,7 @@ class RegisterBody(BaseModel):
     email: str
     password: str
     pincode: int
-    topics: str
+    topics: list[str]
 
 
 class LoginResponse(BaseModel):
@@ -77,9 +80,26 @@ class LoginResponse(BaseModel):
     username: str
 
 
-@app.post("/register")
-async def register_root(body: RegisterBody, request: Request) -> LoginResponse:
-    topics = [(topic.lower()).strip() for topic in body.topics.split(",")]
+class RegisterUniqueError(BaseModel):
+    message: str
+    unique_field: Literal["email"] | Literal["username"]
+
+
+@app.post(
+    "/register",
+    responses={
+        409: {
+            "content": {
+                "application/json": {
+                    "schema": RegisterUniqueError.model_json_schema(),
+                }
+            },
+        }
+    },
+)
+async def register(body: RegisterBody, request: Request) -> LoginResponse:
+    topics = [topic.lower().strip() for topic in body.topics]
+    topics = [topic for topic in topics if len(topic) != 0]
 
     pass_hashed = bcrypt.hashpw(body.password.encode("utf-8"), bcrypt.gensalt()).decode(
         "utf-8"
@@ -92,8 +112,27 @@ async def register_root(body: RegisterBody, request: Request) -> LoginResponse:
             password=pass_hashed,
             pincode=body.pincode,
         )
-        session.add(user)
-        session.commit()
+        try:
+            session.add(user)
+            session.commit()
+        except sqlalchemy.exc.IntegrityError as e:
+            if "UNIQUE constraint failed: user.email" in str(e):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=RegisterUniqueError(
+                        message="email already exists", unique_field="email"
+                    ).model_dump(),
+                )
+
+            if "UNIQUE constraint failed: user.username" in str(e):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=RegisterUniqueError(
+                        message="username already exists", unique_field="username"
+                    ).model_dump(),
+                )
+            print(e)
+            raise Exception("Couldn't match email/username for Integrity Error")
 
         if len(topics) > 0:
             await insert_user_topics(session, user, topics)
@@ -116,7 +155,7 @@ class LoginBody(BaseModel):
 
 #  Login User by using email or password
 @app.post("/login")
-async def login_root(body: LoginBody, response: Response) -> LoginResponse:
+async def login(body: LoginBody, response: Response) -> LoginResponse:
     with Session(db) as session:
         stmt = select(tables.User).where(tables.User.email == body.email).limit(1)
         user = session.exec(stmt).one_or_none()
@@ -144,7 +183,7 @@ class LoggedInUser:
     session: tables.Session
 
 
-async def get_current_user(
+async def get_logged_in_user(
     authorization: Annotated[str, Header()],
 ) -> LoggedInUser:
     with Session(db) as session:
@@ -195,16 +234,16 @@ class UserInformation(BaseModel):
 
 
 #  Check the user is loge in or not
-@app.get("/logged_in/")
-async def logged_in(
-    current_user: Annotated[LoggedInUser, Depends(get_current_user)],
+@app.get("/get_current_user/")
+async def get_current_user(
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
 ) -> UserInformation:
     return UserInformation.from_user(current_user.user)
 
 
 #  Logout user
 @app.post("/logout/")
-async def logout(current_user: Annotated[LoggedInUser, Depends(get_current_user)]):
+async def logout(current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)]):
     with Session(db) as session:
         session.delete(current_user.session)
         session.commit()
@@ -217,7 +256,7 @@ class UserWithTopics(BaseModel):
 
 @app.get("/suggestion")
 async def suggestion(
-    current_user: Annotated[LoggedInUser, Depends(get_current_user)],
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
 ) -> list[UserWithTopics]:
     with Session(db) as session:
         stmt = select(tables.UserTopic).where(
@@ -258,16 +297,10 @@ async def suggestion(
 @app.get("/user_profile/{username}")
 async def user_profile(
     username: str,
-    current_user: Annotated[LoggedInUser, Depends(get_current_user)],
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
 ) -> UserWithTopics:
     with Session(db) as session:
         return get_user_with_topics(session, username=username)
-
-
-@app.get("/profile/")
-async def profile(current_user: Annotated[LoggedInUser, Depends(get_current_user)]):
-    with Session(db) as session:
-        return get_user_with_topics(session, username=current_user.user.username)
 
 
 class AddFriend(BaseModel):
@@ -278,7 +311,7 @@ class AddFriend(BaseModel):
 @app.post("/add_friend/")
 async def add_friend(
     body: AddFriend,
-    current_user: Annotated[LoggedInUser, Depends(get_current_user)],
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
 ):
     with Session(db) as session:
         stmt = select(tables.User).where(tables.User.id == body.user_id)
@@ -302,7 +335,7 @@ async def add_friend(
 
 @app.get("/get_inbox_users/")
 async def get_inbox_users(
-    current_user: Annotated[LoggedInUser, Depends(get_current_user)],
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
 ) -> list[UserWithTopics]:
     with Session(db) as session:
         # Get all friends added by current user
@@ -344,10 +377,10 @@ class SendMessageBody(BaseModel):
 
 
 @app.post("/send_message/{user_id}")
-async def message_set(
+async def send_message(
     body: SendMessageBody,
     user_id: int,
-    current_user: Annotated[LoggedInUser, Depends(get_current_user)],
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
 ):
     with Session(db) as session:
         session.add(
@@ -358,10 +391,10 @@ async def message_set(
         session.commit()
 
 
-@app.get("/get_message/{user_id}")
-async def get_message(
+@app.get("/get_messages/{user_id}")
+async def get_messages(
     user_id: int,
-    current_user: Annotated[LoggedInUser, Depends(get_current_user)],
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
 ) -> list[tables.Message]:
     with Session(db) as session:
         stmt = select(tables.Message).where(
@@ -432,6 +465,14 @@ def get_user_with_topics(
         user=UserInformation.from_user(user), topics=[t for t, _ in topics]
     )
 
+
+def use_route_names_as_operation_ids(app: FastAPI) -> None:
+    for route in app.routes:
+        if isinstance(route, APIRoute):
+            route.operation_id = route.name
+
+
+use_route_names_as_operation_ids(app)
 
 if __name__ == "__main__":
     run(app, host="127.0.0.1", port=8006)

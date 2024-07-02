@@ -1,6 +1,6 @@
 import { error, json, redirect } from "@sveltejs/kit";
 /** @type {import('./$types').Actions} */
-import { Backend_Base_URL } from "$lib/backend_url";
+import { BACKEND_BASE_URL } from "$lib/backend_url";
 
 /** @type {import('./$types').PageServerLoad} */
 export const load = async ({ params, cookies }) => {
@@ -10,7 +10,7 @@ export const load = async ({ params, cookies }) => {
 		redirect(303, "/login");
 	}
 	const response = await fetch(
-		`${Backend_Base_URL}:8000/get_message/${user_id}`,
+		`${BACKEND_BASE_URL}:8000/get_message/${user_id}`,
 		{
 			method: "GET",
 			headers: {
@@ -41,7 +41,7 @@ export const actions = {
 		console.log(user_id , token , message)
 		if (token !== undefined) {
 			const response = await fetch(
-				`${Backend_Base_URL}:8000/message_set/${user_id}`,
+				`${BACKEND_BASE_URL}:8000/message_set/${user_id}`,
 				{
 					method: "POST",
 					headers: {

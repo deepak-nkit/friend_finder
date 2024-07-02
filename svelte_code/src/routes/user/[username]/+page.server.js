@@ -1,6 +1,6 @@
 import { error, json, redirect } from "@sveltejs/kit";
 /** @type {import('./$types').Actions} */
-import { Backend_Base_URL } from "$lib/backend_url";
+import { BACKEND_BASE_URL } from "$lib/backend_url";
 
 /** @type {import('./$types').PageServerLoad} */
 export const load = async ({ params,  cookies }) => {
@@ -9,7 +9,7 @@ export const load = async ({ params,  cookies }) => {
 	if (token === undefined || token == "") {
 		redirect(303, "/login");
 	}
-	const response = await fetch(`${Backend_Base_URL}:8000/user_profile/${username}`,{
+	const response = await fetch(`${BACKEND_BASE_URL}:8000/user_profile/${username}`,{
 		method: "GET",
 		headers: {
 			authorization: token,
