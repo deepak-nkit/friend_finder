@@ -1,12 +1,15 @@
+import asyncio
+from collections import defaultdict
 from contextlib import asynccontextmanager
 import sqlite3
-from typing import Literal
+from typing import DefaultDict, Literal
 from dataclasses import dataclass
 import sqlite3
-from pydantic import BaseModel
+from pydantic import UUID4, BaseModel
 from typing import Optional
+import uuid
 import sqlalchemy
-from sqlalchemy import Engine
+from sqlalchemy import Engine, text
 import sqlalchemy.exc
 from uvicorn import run
 import os
@@ -32,6 +35,51 @@ origins = [
 
 db: Engine
 TOKEN_LENGTH = 128
+
+
+class TimeoutException(Exception): ...
+
+
+Key = tuple[int, int]
+MessageQueue = asyncio.Queue[tables.Message]
+
+
+class MessageQueueHandler:
+    def __init__(self):
+        self.queues: DefaultDict[Key, set[MessageQueue]] = defaultdict(set)
+
+        # {[q1, (u1, u2)], [q2, (u3, u1)]}
+        self.deleted_queues: set[tuple[Key, MessageQueue]] = set()
+
+    # /send_message
+    def broadcast_message(self, key: Key, message: tables.Message):
+        for queue in self.queues[key]:
+            queue.put_nowait(message)
+
+        # Not thread safe
+        for k, queue in self.deleted_queues:
+            self.queues[k].remove(queue)
+
+        self.deleted_queues.clear()
+
+    async def wait_for_message(
+        self, key: Key, timeout: int = 60
+    ) -> tables.Message | None:
+        queue = asyncio.Queue()
+        self.queues[key].add(queue)
+
+        done, _ = await asyncio.wait(
+            [asyncio.create_task(queue.get())], timeout=timeout
+        )
+        self.deleted_queues.add((key, queue))
+
+        if len(done) == 0:
+            return None
+
+        return await list(done)[0]
+
+
+message_handler = MessageQueueHandler()
 
 
 @asynccontextmanager
@@ -388,6 +436,7 @@ async def get_inbox_users(
 
 class SendMessageBody(BaseModel):
     message: str
+    client_id: UUID4
 
 
 @app.post("/send_message/{username}")
@@ -398,11 +447,18 @@ async def send_message(
 ) -> tables.Message:
     with Session(db) as session:
         user = get_user_with_topics(session, current_user.user.id, username=username)
-        message =  tables.Message(
-                sender=current_user.user.id, reciever=user.user.id, content=body.message
-            )
+        message = tables.Message(
+            sender=current_user.user.id,
+            reciever=user.user.id,
+            content=body.message,
+            client_id=str(body.client_id),
+        )
         session.add(message)
         session.commit()
+
+        message_handler.broadcast_message((message.sender, message.reciever), message)
+        message_handler.broadcast_message((message.reciever, message.sender), message)
+
         return message
 
 
@@ -410,6 +466,8 @@ async def send_message(
 async def get_messages(
     username: str,
     current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
+    limit: int = 20,
+    before_id: Optional[int] = None,
 ) -> list[tables.Message]:
     with Session(db) as session:
         user = get_user_with_topics(session, current_user.user.id, username=username)
@@ -426,11 +484,50 @@ async def get_messages(
                 ),
             )
         )
-        return sorted(
-            session.exec(stmt).fetchall(),
-            key=lambda x: x.sent_at,
-            reverse=True,
+        if before_id is not None:
+            stmt = stmt.where(tables.Message.id < before_id)
+
+        stmt = stmt.order_by(text("id DESC")).limit(limit)
+
+        return list(session.exec(stmt).fetchall())
+
+
+@app.get("/poll_message/{username}")
+async def poll_message(
+    username: str,
+    after_id: int,
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
+    limit: int = 20,
+) -> list[tables.Message]:
+    with Session(db) as session:
+        user = get_user_with_topics(session, current_user.user.id, username=username)
+        key = (current_user.user.id, user.user.id)
+        task = asyncio.create_task(message_handler.wait_for_message(key))
+        stmt = select(tables.Message).where(
+            or_(
+                and_(
+                    tables.Message.sender == user.user.id,
+                    tables.Message.reciever == current_user.user.id,
+                ),
+                and_(
+                    tables.Message.sender == current_user.user.id,
+                    tables.Message.reciever == user.user.id,
+                ),
+            )
         )
+        stmt = stmt.where(tables.Message.id > after_id)
+
+        stmt = stmt.order_by(text("id ASC")).limit(limit)
+        messages = session.exec(stmt).fetchall()
+        if len(messages) != 0:
+            task.cancel()
+            return list(messages)
+        else:
+            message = await task
+            if message is None:
+                return []
+            else:
+                return [message]
 
 
 # # store messages
