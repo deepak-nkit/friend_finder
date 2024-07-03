@@ -5,6 +5,7 @@ import { formSchema } from "./form_schema";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
 import type { Paths } from "../../../backend_openapi";
+import { unreachable } from "$lib/utils";
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	const token = cookies.get("session_token");
@@ -39,23 +40,23 @@ export const actions: Actions = {
 
 		const client = await BACKEND_API.getClient();
 
-		const response = await client.register(
-			null,
-			{
-				username: form.data.username,
-				email: form.data.email,
-				password: form.data.password,
-				pincode: Number.parseInt(form.data.pincode),
-				topics: form.data.topics,
-			},
-			{
-				validateStatus(status) {
-					return [409, 200].includes(status);
-				},
-			},
-		);
+		const data = {
+			username: form.data.username,
+			email: form.data.email,
+			password: form.data.password,
+			pincode: Number.parseInt(form.data.pincode),
+			topics: form.data.topics,
+		};
 
-		if (response.status == 409) {
+		console.log("================ data sending", form.data.topics)
+
+		const response = await client.register(null, data, {
+			validateStatus: (status) => {
+				return [409, 200].includes(status);
+			},
+		});
+
+		if (response.status === 409) {
 			// TODO: the type in openapi schema is "wrong" here.
 			// it does not include `detail` key.
 			let data = response.data as unknown as {
@@ -67,15 +68,18 @@ export const actions: Actions = {
 			} else if (data["detail"]["unique_field"] === "username") {
 				form.errors.username = ["Username is already being used."];
 			} else {
-				throw new Error("unreachable");
+				unreachable();
 			}
 			return fail(409, { form });
-		} else {
+		} else if (response.status === 200) {
+			// -> 200
 			cookies.set("session_token", response.data.session_token, {
 				maxAge: 3600 * 24 * 365 * 100,
 				path: "/",
 			});
 			redirect(303, "/");
+		} else {
+			unreachable();
 		}
 	},
 };

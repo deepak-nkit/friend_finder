@@ -26,6 +26,8 @@ origins = [
     "http://localhost:5500",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
 ]
 
 db: Engine
@@ -87,15 +89,7 @@ class RegisterUniqueError(BaseModel):
 
 @app.post(
     "/register",
-    responses={
-        409: {
-            "content": {
-                "application/json": {
-                    "schema": RegisterUniqueError.model_json_schema(),
-                }
-            },
-        }
-    },
+    responses={409: {"model": RegisterUniqueError}},
 )
 async def register(body: RegisterBody, request: Request) -> LoginResponse:
     topics = [topic.lower().strip() for topic in body.topics]
@@ -105,7 +99,7 @@ async def register(body: RegisterBody, request: Request) -> LoginResponse:
         "utf-8"
     )
 
-    with Session(db) as session:
+    with Session(db) as session:  # BEGIN TRANSACTION
         user = tables.User(
             username=body.username,
             email=body.email,
@@ -114,9 +108,10 @@ async def register(body: RegisterBody, request: Request) -> LoginResponse:
         )
         try:
             session.add(user)
-            session.commit()
+            session.flush()
         except sqlalchemy.exc.IntegrityError as e:
             if "UNIQUE constraint failed: user.email" in str(e):
+                # TODO: openapi types seem wrong here?
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail=RegisterUniqueError(
@@ -214,9 +209,9 @@ class UserInformation(BaseModel):
     username: str
     email: str
     pincode: int
-    name: Optional[str] = None
-    number: Optional[str] = None
-    address: Optional[str] = None
+    name: Optional[str]
+    number: Optional[str]
+    address: Optional[str]
     joined_on: str
 
     @classmethod
@@ -252,6 +247,7 @@ async def logout(current_user: Annotated[LoggedInUser, Depends(get_logged_in_use
 class UserWithTopics(BaseModel):
     user: UserInformation
     topics: list[tables.Topic]
+    is_friend: bool
 
 
 @app.get("/suggestion")
@@ -265,6 +261,9 @@ async def suggestion(
         user_topics = session.exec(stmt).fetchall()
         topic_ids = [u.topic_id for u in user_topics]
 
+        if len(topic_ids) == 0:
+            return []
+
         stmt = select(tables.User, tables.UserTopic, tables.Topic).where(
             # JOIN
             tables.UserTopic.user_id == tables.User.id,
@@ -272,6 +271,7 @@ async def suggestion(
             tables.User.pincode == current_user.user.pincode,
             tables.User.id != current_user.user.id,
         )
+
         stmt = stmt.where(or_(*[tables.Topic.id == id for id in topic_ids]))
 
         result = session.exec(stmt).fetchall()
@@ -281,7 +281,9 @@ async def suggestion(
         for user, _, topic in result:
             if user.id not in user_id_to_suggestion:
                 user_id_to_suggestion[user.id] = UserWithTopics(
-                    user=UserInformation.from_user(user), topics=[topic]
+                    user=UserInformation.from_user(user),
+                    topics=[topic],
+                    is_friend=is_friend(session, current_user.user.id, user.id),
                 )
             else:
                 user_id_to_suggestion[user.id].topics.append(topic)
@@ -300,7 +302,17 @@ async def user_profile(
     current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
 ) -> UserWithTopics:
     with Session(db) as session:
-        return get_user_with_topics(session, username=username)
+        return get_user_with_topics(session, current_user.user.id, username=username)
+
+
+@app.get("/user_profile")
+async def self_user_profile(
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
+) -> UserWithTopics:
+    with Session(db) as session:
+        return get_user_with_topics(
+            session, current_user.user.id, username=current_user.user.username
+        )
 
 
 class AddFriend(BaseModel):
@@ -368,7 +380,9 @@ async def get_inbox_users(
         inbox_users: list[UserWithTopics] = []
 
         for id in inbox_user_ids:
-            inbox_users.append(get_user_with_topics(session, user_id=id))
+            inbox_users.append(
+                get_user_with_topics(session, current_user.user.id, user_id=id)
+            )
         return inbox_users
 
 
@@ -376,36 +390,39 @@ class SendMessageBody(BaseModel):
     message: str
 
 
-@app.post("/send_message/{user_id}")
+@app.post("/send_message/{username}")
 async def send_message(
     body: SendMessageBody,
-    user_id: int,
+    username: str,
     current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
-):
+) -> tables.Message:
     with Session(db) as session:
-        session.add(
-            tables.Message(
-                sender=current_user.user.id, reciever=user_id, content=body.message
+        user = get_user_with_topics(session, current_user.user.id, username=username)
+        message =  tables.Message(
+                sender=current_user.user.id, reciever=user.user.id, content=body.message
             )
-        )
+        session.add(message)
         session.commit()
+        return message
 
 
-@app.get("/get_messages/{user_id}")
+@app.get("/get_messages/{username}")
 async def get_messages(
-    user_id: int,
+    username: str,
     current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
 ) -> list[tables.Message]:
     with Session(db) as session:
+        user = get_user_with_topics(session, current_user.user.id, username=username)
+
         stmt = select(tables.Message).where(
             or_(
                 and_(
-                    tables.Message.sender == user_id,
+                    tables.Message.sender == user.user.id,
                     tables.Message.reciever == current_user.user.id,
                 ),
                 and_(
                     tables.Message.sender == current_user.user.id,
-                    tables.Message.reciever == user_id,
+                    tables.Message.reciever == user.user.id,
                 ),
             )
         )
@@ -429,17 +446,21 @@ async def insert_user_topics(
         if len(result) == 0:
             topic = tables.Topic(name=topic_name)
             session.add(topic)
-            session.commit()
+            session.flush()
             topic_id = topic.id
         else:
             topic_id = result[0].id
 
         session.add(tables.UserTopic(topic_id=topic_id, user_id=user.id))
-    session.commit()
+    session.flush()
 
 
 def get_user_with_topics(
-    session: Session, *, username: str | None = None, user_id: int | None = None
+    session: Session,
+    current_user_id: int,
+    *,
+    username: str | None = None,
+    user_id: int | None = None,
 ) -> UserWithTopics:
     if user_id is None and username is None:
         raise Exception("Atleast one of 'user_id' or 'username' is required")
@@ -461,9 +482,28 @@ def get_user_with_topics(
         tables.UserTopic.user_id == user.id,
     )
     topics = session.exec(stmt).fetchall()
+
     return UserWithTopics(
-        user=UserInformation.from_user(user), topics=[t for t, _ in topics]
+        user=UserInformation.from_user(user),
+        topics=[t for t, _ in topics],
+        is_friend=is_friend(session, current_user_id, user.id),
     )
+
+
+def is_friend(session: Session, user1_id: int, user2_id: int):
+    stmt = select(tables.FriendRequest).where(
+        or_(
+            and_(
+                tables.FriendRequest.sender == user1_id,
+                tables.FriendRequest.reciever == user2_id,
+            ),
+            and_(
+                tables.FriendRequest.sender == user2_id,
+                tables.FriendRequest.reciever == user1_id,
+            ),
+        )
+    )
+    return session.exec(stmt).one_or_none() is not None
 
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:

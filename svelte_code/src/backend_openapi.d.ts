@@ -107,6 +107,19 @@ declare namespace Components {
             topics: string[];
         }
         /**
+         * RegisterUniqueError
+         */
+        export interface RegisterUniqueError {
+            /**
+             * Message
+             */
+            message: string;
+            /**
+             * Unique Field
+             */
+            unique_field: /* Unique Field */ ("email") | ("username");
+        }
+        /**
          * SendMessageBody
          */
         export interface SendMessageBody {
@@ -152,15 +165,15 @@ declare namespace Components {
             /**
              * Name
              */
-            name?: /* Name */ string | null;
+            name: /* Name */ string | null;
             /**
              * Number
              */
-            number?: /* Number */ string | null;
+            number: /* Number */ string | null;
             /**
              * Address
              */
-            address?: /* Address */ string | null;
+            address: /* Address */ string | null;
             /**
              * Joined On
              */
@@ -179,6 +192,10 @@ declare namespace Components {
              * Topics
              */
             topics: /* Topic */ Topic[];
+            /**
+             * Is Friend
+             */
+            is_friend: boolean;
         }
         /**
          * ValidationError
@@ -263,16 +280,16 @@ declare namespace Paths {
              */
             export type Authorization = string;
             /**
-             * User Id
+             * Username
              */
-            export type UserId = number;
+            export type Username = string;
         }
         export interface PathParameters {
-            user_id: /* User Id */ Parameters.UserId;
+            username: /* Username */ Parameters.Username;
         }
         namespace Responses {
             /**
-             * Response Get Messages Get Messages  User Id  Get
+             * Response Get Messages Get Messages  Username  Get
              */
             export type $200 = /* Message */ Components.Schemas.Message[];
             export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
@@ -309,19 +326,22 @@ declare namespace Paths {
         export type RequestBody = /* RegisterBody */ Components.Schemas.RegisterBody;
         namespace Responses {
             export type $200 = /* LoginResponse */ Components.Schemas.LoginResponse;
+            export type $409 = /* RegisterUniqueError */ Components.Schemas.RegisterUniqueError;
+            export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
+        }
+    }
+    namespace SelfUserProfile {
+        export interface HeaderParameters {
+            authorization: /* Authorization */ Parameters.Authorization;
+        }
+        namespace Parameters {
             /**
-             * RegisterUniqueError
+             * Authorization
              */
-            export interface $409 {
-                /**
-                 * Message
-                 */
-                message: string;
-                /**
-                 * Unique Field
-                 */
-                unique_field: /* Unique Field */ ("email") | ("username");
-            }
+            export type Authorization = string;
+        }
+        namespace Responses {
+            export type $200 = /* UserWithTopics */ Components.Schemas.UserWithTopics;
             export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
         }
     }
@@ -335,16 +355,16 @@ declare namespace Paths {
              */
             export type Authorization = string;
             /**
-             * User Id
+             * Username
              */
-            export type UserId = number;
+            export type Username = string;
         }
         export interface PathParameters {
-            user_id: /* User Id */ Parameters.UserId;
+            username: /* Username */ Parameters.Username;
         }
         export type RequestBody = /* SendMessageBody */ Components.Schemas.SendMessageBody;
         namespace Responses {
-            export type $200 = any;
+            export type $200 = /* Message */ Components.Schemas.Message;
             export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
         }
     }
@@ -447,6 +467,14 @@ export interface OperationMethods {
     data?: any,
     config?: AxiosRequestConfig  
   ): OperationResponse<Paths.UserProfile.Responses.$200>
+  /**
+   * self_user_profile - Self User Profile
+   */
+  'self_user_profile'(
+    parameters?: Parameters<Paths.SelfUserProfile.HeaderParameters> | null,
+    data?: any,
+    config?: AxiosRequestConfig  
+  ): OperationResponse<Paths.SelfUserProfile.Responses.$200>
   /**
    * add_friend - Add Friend
    */
@@ -552,6 +580,16 @@ export interface PathsDictionary {
       config?: AxiosRequestConfig  
     ): OperationResponse<Paths.UserProfile.Responses.$200>
   }
+  ['/user_profile']: {
+    /**
+     * self_user_profile - Self User Profile
+     */
+    'get'(
+      parameters?: Parameters<Paths.SelfUserProfile.HeaderParameters> | null,
+      data?: any,
+      config?: AxiosRequestConfig  
+    ): OperationResponse<Paths.SelfUserProfile.Responses.$200>
+  }
   ['/add_friend/']: {
     /**
      * add_friend - Add Friend
@@ -572,7 +610,7 @@ export interface PathsDictionary {
       config?: AxiosRequestConfig  
     ): OperationResponse<Paths.GetInboxUsers.Responses.$200>
   }
-  ['/send_message/{user_id}']: {
+  ['/send_message/{username}']: {
     /**
      * send_message - Send Message
      */
@@ -582,7 +620,7 @@ export interface PathsDictionary {
       config?: AxiosRequestConfig  
     ): OperationResponse<Paths.SendMessage.Responses.$200>
   }
-  ['/get_messages/{user_id}']: {
+  ['/get_messages/{username}']: {
     /**
      * get_messages - Get Messages
      */

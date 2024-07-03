@@ -6,15 +6,15 @@
   import { toast } from "svelte-sonner";
   import FormError from "$lib/components/FormError.svelte";
 
-  import SvelteOtp from "@k4ung/svelte-otp";
   export let data;
 
-  const { form, errors, enhance, message } = superForm(data.form, {
+  const { form, errors, enhance } = superForm(data.form, {
     validators: zodClient(formSchema),
+    dataType: 'json',
     onError: (e) => {
-      // TODO: make red, show correct error.
-      // @ts-expect-error
-      toast.error(`Something went wrong at server: ${e.message}`);
+      console.error(e);
+      // TODO: make red
+      toast.error(`Something went wrong at server`);
     },
   });
 
@@ -23,13 +23,21 @@
   $: {
     currentTopic = currentTopic.replace(/,/g, "");
   }
+  $: {
+    form.update(
+      ($form) => {
+        $form.topics = topics;
+        return $form;
+      },
+    );
+  }
 
   function addTopic(topic: string) {
     if (topic === "") {
       return;
     }
     if (topics.includes(topic)) {
-      return
+      return;
     }
     topics.push(topic);
     topics = topics;
@@ -141,6 +149,7 @@
 
   <button type="submit" class="btn btn-primary">Submit</button>
   <div class="flex justify-around">
-    <a href="/login"><button class="btn btn-ghost btn-sm">Login</button></a>
+    <a href="/login"><button type="button" class="btn btn-ghost btn-sm">Login</button></a>
   </div>
 </form>
+<SuperDebug data={{$form, topics}} />

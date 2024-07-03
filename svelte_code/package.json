@@ -31,9 +31,11 @@
 		"@k4ung/svelte-otp": "^0.0.9",
 		"@types/nprogress": "^0.2.3",
 		"axios": "^1.7.2",
+		"date-fns": "^3.6.0",
 		"lucide-svelte": "^0.399.0",
 		"nprogress": "^0.2.0",
 		"openapi-client-axios": "^7.5.5",
+		"remeda": "^2.3.0",
 		"sveltekit-superforms": "^2.15.2",
 		"zod": "^3.23.8"
 	}

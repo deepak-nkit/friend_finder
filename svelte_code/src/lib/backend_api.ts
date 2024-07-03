@@ -21,7 +21,6 @@ class BackendAPI {
 	}
 
 	async getClient() {
-		console.log("====================== ", this.api.getBaseURL());
 		return this.api.getClient<BackendClient>();
 	}
 }

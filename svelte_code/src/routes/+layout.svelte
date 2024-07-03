@@ -1,6 +1,5 @@
 <script lang="ts">
-
-	import { Toaster } from 'svelte-sonner';
+  import { Toaster } from "svelte-sonner";
   import "../app.css";
   import "nprogress/nprogress.css";
   import NProgress from "nprogress";
@@ -23,6 +22,6 @@
 
 <!-- <div data-theme="cupcake"> -->
 <!-- <div data-theme="friend_theme"> -->
-<div data-theme="friend_theme" class="min-h-screen">
+<div data-theme="friend_theme" class="min-h-screen box-border">
   <slot></slot>
 </div>

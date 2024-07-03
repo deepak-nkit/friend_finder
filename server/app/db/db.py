@@ -39,6 +39,7 @@ class Session(SQLModel, table=True):
 
 class Message(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)
+    client_id: str = Field(unique=True)
     sender: int = Field(foreign_key="user.id")
     reciever: int = Field(foreign_key="user.id")
     content: str

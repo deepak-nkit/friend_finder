@@ -1,9 +1,10 @@
-import { error, fail, json, redirect } from "@sveltejs/kit";
+import { fail, redirect } from "@sveltejs/kit";
 import type { PageServerLoad, Actions } from "./$types";
 import { BACKEND_API } from "$lib/backend_api";
 import { formSchema } from "./form_schema";
 import { superValidate } from "sveltekit-superforms";
 import { zod } from "sveltekit-superforms/adapters";
+import { unreachable } from "$lib/utils";
 
 export const load: PageServerLoad = async ({ cookies }) => {
 	const token = cookies.get("session_token");
@@ -15,8 +16,8 @@ export const load: PageServerLoad = async ({ cookies }) => {
 				Authorization: token,
 			},
 			validateStatus(status) {
-          return [401, 200].includes(status)
-      },
+				return [401, 200].includes(status);
+			},
 		});
 
 		if (response.status == 200) {
@@ -30,7 +31,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies }) => {
+	login: async ({ request, cookies }) => {
 		const form = await superValidate(request, zod(formSchema));
 		if (!form.valid) {
 			return fail(400, { form });
@@ -38,24 +39,53 @@ export const actions: Actions = {
 
 		const client = await BACKEND_API.getClient();
 
-		const response = await client.login(null, {
-			email: form.data.email,
-			password: form.data.password,
-		});
+		const response = await client.login(
+			null,
+			{
+				email: form.data.email,
+				password: form.data.password,
+			},
+			{
+				validateStatus(status) {
+					return [401, 200].includes(status);
+				},
+			},
+		);
 
-		if (response.status != 200 && response.status !== 401) {
-			// TODO: take this error out of `email` field
-			form.errors.email = ["Something went wrong"];
-			return fail(500, { form });
-		} else if (response.status === 401) {
+		if (response.status === 401) {
 			form.errors.email = ["Invalid email or password"];
 			return fail(401, { form });
-		} else {
+		} else if (response.status === 200) {
 			cookies.set("session_token", response.data.session_token, {
 				maxAge: 3600 * 24 * 365 * 100,
 				path: "/",
+				// TODO(security): find a better alternative
+				httpOnly: false,
 			});
 			redirect(303, "/");
+		} else {
+			unreachable();
 		}
+	},
+	logout: async ({ cookies }) => {
+		const token = cookies.get('session_token')
+		if (!token) {
+			return redirect(303, "/login")
+		}
+		
+
+		const client = await BACKEND_API.getClient();
+		await client.logout(null, null, {
+			headers: {
+				Authorization: token,
+			},
+
+			validateStatus(status) {
+				return [401, 200].includes(status);
+			},
+		});
+
+
+		redirect(303, "/login");
 	},
 };
