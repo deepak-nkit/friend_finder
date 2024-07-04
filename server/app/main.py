@@ -519,6 +519,8 @@ async def poll_message(
 
         stmt = stmt.order_by(text("id ASC")).limit(limit)
         messages = session.exec(stmt).fetchall()
+    # await asyncio.sleep(5) # for test
+
     if len(messages) != 0:
         task.cancel()
         return list(messages)
