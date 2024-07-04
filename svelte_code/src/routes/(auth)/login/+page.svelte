@@ -53,7 +53,6 @@
   <div class="flex justify-around">
     <a href="/register">
       <button type="button" class="btn btn-ghost btn-sm">Register </button>
-    </a>
     <button type="button" class="btn btn-ghost btn-sm">Forgot Password</button>
   </div>
 </form>

@@ -11,8 +11,19 @@
   import { onDestroy, onMount } from "svelte";
   import { BACKEND_PUBLIC_URL } from "$lib/const";
   import { browser } from "$app/environment";
+  import { SvelteMap } from "svelte/reactivity";
+
+  import {
+    PromiseStatuses,
+    PROMISE_RESOLVED,
+    promiseStatus,
+    promiseState,
+    isPromiseResolved,
+    isPromiseNotRejected,
+  } from "promise-status-async";
 
   import { v4 as uuidv4 } from "uuid";
+  import { PROMISE_PENDING } from "promise-status-async";
 
   /**
   page_load: 20
@@ -20,7 +31,8 @@
 
   temporary_message: user-sent
   */
-  export let data: PageData;
+  let { data } = $props<{ data: PageData }>();
+  let chat_user = $derived($page.params.username);
 
   function create_map(messages: Components.Schemas.Message[]) {
     let map: Map<number, Components.Schemas.Message> = new Map();
@@ -30,7 +42,7 @@
     return map;
   }
 
-  $: initial_messages = create_map(data.messages);
+  let initial_messages = $derived(create_map(data.messages));
   function sortMessagesReverse(
     message: Map<number, Components.Schemas.Message>,
   ) {
@@ -40,36 +52,40 @@
       })
       .map((x) => message.get(x)!);
   }
-  $: initial_messages_list = sortMessagesReverse(initial_messages)
+  let initial_messages_list = $derived(sortMessagesReverse(initial_messages));
 
   // recieved via /polled_messages
-  let polled_messages: Map<number, Components.Schemas.Message> = new Map();
-  $: polled_messages_list = sortMessagesReverse(polled_messages)
+  let polled_messages: SvelteMap<
+    string,
+    SvelteMap<number, Components.Schemas.Message>
+  > = $state(new SvelteMap());
+
+  let polled_messages_list = $derived(
+    sortMessagesReverse(polled_messages.get(chat_user) || new SvelteMap()),
+  );
 
   // Yet to be acknowledged by server
-  let pending_messages: { client_id: string; content: string }[] = [];
+  let pending_messages: SvelteMap<
+    string,
+    { client_id: string; content: string }[]
+  > = $state(new SvelteMap());
 
-  function clearState(data: any) {
-    polled_messages.clear();
-    polled_messages = polled_messages;
-    pending_messages.length = 0;
-    pending_messages = pending_messages;
+  $effect(() => {
+    pending_messages.set(chat_user, []);
+    polled_messages.set(chat_user, new SvelteMap());
+  });
+
+  function latestMessageID(chat_user: string) {
+    return Math.max(
+      ...initial_messages.keys(),
+      ...(polled_messages.get(chat_user) || new SvelteMap()).keys(),
+      0,
+    );
   }
-
-  $: clearState(data.messages);
-
-  // TODO(perf): don't recalculate every time new message arrives
-  $: latest_message_id = Math.max(
-    ...initial_messages.keys(),
-    ...polled_messages.keys(),
-    0,
-  );
 
   let chatWindow: HTMLDivElement;
 
-  $: chat_user = $page.params.username;
-
-  $: {
+  $effect(() => {
     if (browser && chatWindow) {
       polled_messages;
       pending_messages;
@@ -77,11 +93,11 @@
         chatWindow.firstElementChild?.scrollIntoView();
       }, 100);
     }
-  }
+  });
 
-  async function pollMessage() {
+  async function pollMessage(other_user: string) {
     let response = await fetch(
-      `/chat/${chat_user}/api/poll_message?after_id=${latest_message_id}`,
+      `/chat/${other_user}/api/poll_message?after_id=${latestMessageID(other_user)}`,
     );
     if (response.ok) {
       let data: Components.Schemas.Message[] = await response.json();
@@ -90,20 +106,27 @@
       }
 
       for (const message of data) {
-        polled_messages.set(message.id!, message);
-        pending_messages = pending_messages.filter(
-          (x) => x.client_id != message.client_id,
+        polled_messages.get(other_user)!.set(message.id!, message);
+        pending_messages.set(
+          other_user,
+          pending_messages
+            .get(other_user)!
+            .filter((x) => x.client_id != message.client_id),
         );
       }
-      polled_messages = polled_messages;
-      pending_messages = pending_messages;
+      /* polled_messages = polled_messages; */
+      /* pending_messages = pending_messages; */
     }
   }
 
-  async function continuouslyPollMessage(condition: () => boolean) {
-    while (condition()) {
+  async function continuouslyPollMessage(
+    condition: () => boolean,
+    other_user: string,
+  ) {
+    console.log("========= starting new poll", other_user);
+    while (other_user === chat_user && condition()) {
       try {
-        await pollMessage();
+        await pollMessage(other_user);
       } catch (e) {
         console.log("polling error: ", e);
         await new Promise((r) => setTimeout(r, 5000));
@@ -111,15 +134,12 @@
     }
   }
 
-  let clientID = uuidv4();
-
-  $: {
-    form.update(($form) => {
-      console.log("========= setting, clientid", clientID);
-      $form.client_id = clientID;
-      return $form;
-    });
-  }
+  /* $effect(() => { */
+  /* form.update(($form) => { */
+  /* $form.client_id = uuidv4(); */
+  /* return $form; */
+  /* }); */
+  /* }); */
 
   const { form, errors, enhance } = superForm(data.form, {
     dataType: "json",
@@ -127,7 +147,10 @@
     invalidateAll: false,
 
     onSubmit: (d) => {
-      clientID = uuidv4();
+      $form.client_id = uuidv4();
+      pending_messages
+        .get(chat_user)!
+        .push({ client_id: $form.client_id, content: $form.content });
     },
     onError: (e) => {
       console.error(e);
@@ -136,13 +159,25 @@
     },
   });
   let running = true;
+  let pollers: Record<string, Promise<void> | undefined> = {};
+  $effect(() => {
+    chat_user;
+    (async () => {
+      if (
+        pollers[chat_user] &&
+        (await promiseStatus(pollers[chat_user])) === PROMISE_PENDING
+      ) {
+      console.log("returning")
+        return;
+      }
+      pollers[chat_user] = continuouslyPollMessage(() => {
+        return running;
+      }, chat_user);
+    })();
+  });
 
   onMount(() => {
-    continuouslyPollMessage(() => {
-      return running;
-    });
-
-    chatWindow.firstElementChild?.scrollIntoView();
+    browser && chatWindow.firstElementChild?.scrollIntoView();
   });
   onDestroy(() => {
     running = false;
@@ -165,7 +200,7 @@
         </div>
       {/if}
     {/each}
-    {#each R.reverse(pending_messages) as message}
+    {#each R.reverse(pending_messages.get(chat_user) || []) as message}
       <div class="chat chat-end">
         <div class="chat-bubble bg-gray-100">{message.content}</div>
       </div>
@@ -184,14 +219,4 @@
       bind:value={$form.content}
     />
   </form>
-  {latest_message_id}
 </div>
-
-<SuperDebug
-  data={{
-    polled_messages_list,
-    initial_messages_list,
-    polled_messages,
-    initial_messages,
-  }}
-/>

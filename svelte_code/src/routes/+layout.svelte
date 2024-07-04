@@ -11,11 +11,11 @@
     minimum: 0.16,
   });
 
-  $: {
+  $effect(() => {
     if ($navigating) {
       NProgress.start();
     } else NProgress.done();
-  }
+  })
 </script>
 
 <Toaster position="top-center" />
