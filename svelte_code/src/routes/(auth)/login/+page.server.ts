@@ -85,6 +85,10 @@ export const actions: Actions = {
 			},
 		});
 
+		cookies.set('session_token', '', {
+			maxAge: 0,
+			path: '/'
+		})
 
 		redirect(303, "/login");
 	},

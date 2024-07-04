@@ -5,70 +5,129 @@
   import * as R from "remeda";
   import type { Components } from "../../../../backend_openapi";
   import { formSchema } from "./form_schema";
-  import { superForm } from "sveltekit-superforms";
+  import SuperDebug, { superForm } from "sveltekit-superforms";
   import { toast } from "svelte-sonner";
   import { invalidateAll } from "$app/navigation";
   import { onDestroy, onMount } from "svelte";
   import { BACKEND_PUBLIC_URL } from "$lib/const";
   import { browser } from "$app/environment";
 
+  import { v4 as uuidv4 } from "uuid";
+
+  /**
+  page_load: 20
+  new_message /poll_message
+
+  temporary_message: user-sent
+  */
   export let data: PageData;
-  let latest_messages: null | Components.Schemas.Message[] = null;
-  let messages_in_progress: string[] = [];
+
+  function create_map(messages: Components.Schemas.Message[]) {
+    let map: Map<number, Components.Schemas.Message> = new Map();
+    for (const message of messages) {
+      map.set(message.id!, message);
+    }
+    return map;
+  }
+
+  $: initial_messages = create_map(data.messages);
+  function sortMessagesReverse(
+    message: Map<number, Components.Schemas.Message>,
+  ) {
+    return [...message.keys()]
+      .sort((a, b) => {
+        return b - a;
+      })
+      .map((x) => message.get(x)!);
+  }
+  $: initial_messages_list = sortMessagesReverse(initial_messages)
+
+  // recieved via /polled_messages
+  let polled_messages: Map<number, Components.Schemas.Message> = new Map();
+  $: polled_messages_list = sortMessagesReverse(polled_messages)
+
+  // Yet to be acknowledged by server
+  let pending_messages: { client_id: string; content: string }[] = [];
+
+  function clearState(data: any) {
+    polled_messages.clear();
+    polled_messages = polled_messages;
+    pending_messages.length = 0;
+    pending_messages = pending_messages;
+  }
+
+  $: clearState(data.messages);
+
+  // TODO(perf): don't recalculate every time new message arrives
+  $: latest_message_id = Math.max(
+    ...initial_messages.keys(),
+    ...polled_messages.keys(),
+    0,
+  );
+
   let chatWindow: HTMLDivElement;
 
   $: chat_user = $page.params.username;
-  $: messages = R.reverse(latest_messages || data.messages);
-
-  $: {
-    latest_messages;
-    messages_in_progress = [];
-  }
 
   $: {
     if (browser && chatWindow) {
-      messages;
-      messages_in_progress;
+      polled_messages;
+      pending_messages;
       setTimeout(() => {
-        chatWindow.lastElementChild?.scrollIntoView();
+        chatWindow.firstElementChild?.scrollIntoView();
       }, 100);
     }
   }
 
-  function getCookie(name: string) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) {
-      return parts.pop()!.split(";").shift();
-    }
-  }
-  async function fetchLatestMessages() {
-    let token = getCookie("session_token")!;
+  async function pollMessage() {
     let response = await fetch(
-      BACKEND_PUBLIC_URL + `/get_messages/${chat_user}`,
-      {
-        headers: {
-          Authorization: token,
-        },
-      },
+      `/chat/${chat_user}/api/poll_message?after_id=${latest_message_id}`,
     );
     if (response.ok) {
-      latest_messages = await response.json();
+      let data: Components.Schemas.Message[] = await response.json();
+      if (data.length === 0) {
+        return;
+      }
+
+      for (const message of data) {
+        polled_messages.set(message.id!, message);
+        pending_messages = pending_messages.filter(
+          (x) => x.client_id != message.client_id,
+        );
+      }
+      polled_messages = polled_messages;
+      pending_messages = pending_messages;
     }
   }
 
+  async function continuouslyPollMessage(condition: () => boolean) {
+    while (condition()) {
+      try {
+        await pollMessage();
+      } catch (e) {
+        console.log("polling error: ", e);
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+    }
+  }
+
+  let clientID = uuidv4();
+
+  $: {
+    form.update(($form) => {
+      console.log("========= setting, clientid", clientID);
+      $form.client_id = clientID;
+      return $form;
+    });
+  }
+
   const { form, errors, enhance } = superForm(data.form, {
+    dataType: "json",
     validators: zodClient(formSchema),
+    invalidateAll: false,
+
     onSubmit: (d) => {
-      messages_in_progress.push(d.formData.get('content')!.toString())
-      messages_in_progress = messages_in_progress;
-      d.jsonData({
-        ...$form,
-      })
-    },
-    onUpdate: (d) => {
-      d.result.data.message
-      
+      clientID = uuidv4();
     },
     onError: (e) => {
       console.error(e);
@@ -76,25 +135,26 @@
       toast.error(`Something went wrong at server`);
     },
   });
+  let running = true;
 
-  // TODO: fix this! fix this!
-  let interval: number | null = null;
   onMount(() => {
-    interval = setInterval(() => {
-      fetchLatestMessages();
-    }, 5000);
-    chatWindow.lastElementChild?.scrollIntoView();
+    continuouslyPollMessage(() => {
+      return running;
+    });
+
+    chatWindow.firstElementChild?.scrollIntoView();
   });
   onDestroy(() => {
-    if (interval) {
-      clearInterval(interval);
-    }
+    running = false;
   });
 </script>
 
 <div class="flex flex-col h-full rounded-2xl">
-  <div class="flex flex-col overflow-y-scroll grow" bind:this={chatWindow}>
-    {#each messages as message}
+  <div
+    class="flex flex-col-reverse overflow-y-scroll grow"
+    bind:this={chatWindow}
+  >
+    {#each [...polled_messages_list, ...initial_messages_list] as message}
       {#if message.sender === data.self_user.user.id}
         <div class="chat chat-end">
           <div class="chat-bubble">{message.content}</div>
@@ -105,21 +165,14 @@
         </div>
       {/if}
     {/each}
-    {#each messages_in_progress as message}
+    {#each R.reverse(pending_messages) as message}
       <div class="chat chat-end">
-        <div class="chat-bubble bg-gray-100">{message}</div>
+        <div class="chat-bubble bg-gray-100">{message.content}</div>
       </div>
     {/each}
   </div>
 
-  <form
-    use:enhance
-    method="POST"
-    on:submit={() => {
-      messages_in_progress.push($form.content);
-      messages_in_progress = messages_in_progress;
-    }}
-  >
+  <form use:enhance method="POST">
     <input
       class="input input-bordered"
       autofocus
@@ -131,4 +184,14 @@
       bind:value={$form.content}
     />
   </form>
+  {latest_message_id}
 </div>
+
+<SuperDebug
+  data={{
+    polled_messages_list,
+    initial_messages_list,
+    polled_messages,
+    initial_messages,
+  }}
+/>

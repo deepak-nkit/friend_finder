@@ -65,6 +65,10 @@ declare namespace Components {
              */
             id?: number;
             /**
+             * Client Id
+             */
+            client_id: string;
+            /**
              * Sender
              */
             sender: number;
@@ -127,6 +131,10 @@ declare namespace Components {
              * Message
              */
             message: string;
+            /**
+             * Client Id
+             */
+            client_id: string; // uuid4
         }
         /**
          * Topic
@@ -280,12 +288,24 @@ declare namespace Paths {
              */
             export type Authorization = string;
             /**
+             * Before Id
+             */
+            export type BeforeId = /* Before Id */ number | null;
+            /**
+             * Limit
+             */
+            export type Limit = number;
+            /**
              * Username
              */
             export type Username = string;
         }
         export interface PathParameters {
             username: /* Username */ Parameters.Username;
+        }
+        export interface QueryParameters {
+            limit?: /* Limit */ Parameters.Limit;
+            before_id?: /* Before Id */ Parameters.BeforeId;
         }
         namespace Responses {
             /**
@@ -319,6 +339,43 @@ declare namespace Paths {
         }
         namespace Responses {
             export type $200 = any;
+            export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
+        }
+    }
+    namespace PollMessage {
+        export interface HeaderParameters {
+            authorization: /* Authorization */ Parameters.Authorization;
+        }
+        namespace Parameters {
+            /**
+             * After Id
+             */
+            export type AfterId = number;
+            /**
+             * Authorization
+             */
+            export type Authorization = string;
+            /**
+             * Limit
+             */
+            export type Limit = number;
+            /**
+             * Username
+             */
+            export type Username = string;
+        }
+        export interface PathParameters {
+            username: /* Username */ Parameters.Username;
+        }
+        export interface QueryParameters {
+            after_id: /* After Id */ Parameters.AfterId;
+            limit?: /* Limit */ Parameters.Limit;
+        }
+        namespace Responses {
+            /**
+             * Response Poll Message Poll Message  Username  Get
+             */
+            export type $200 = /* Message */ Components.Schemas.Message[];
             export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
         }
     }
@@ -503,10 +560,18 @@ export interface OperationMethods {
    * get_messages - Get Messages
    */
   'get_messages'(
-    parameters?: Parameters<Paths.GetMessages.HeaderParameters & Paths.GetMessages.PathParameters> | null,
+    parameters?: Parameters<Paths.GetMessages.QueryParameters & Paths.GetMessages.HeaderParameters & Paths.GetMessages.PathParameters> | null,
     data?: any,
     config?: AxiosRequestConfig  
   ): OperationResponse<Paths.GetMessages.Responses.$200>
+  /**
+   * poll_message - Poll Message
+   */
+  'poll_message'(
+    parameters?: Parameters<Paths.PollMessage.QueryParameters & Paths.PollMessage.HeaderParameters & Paths.PollMessage.PathParameters> | null,
+    data?: any,
+    config?: AxiosRequestConfig  
+  ): OperationResponse<Paths.PollMessage.Responses.$200>
 }
 
 export interface PathsDictionary {
@@ -625,10 +690,20 @@ export interface PathsDictionary {
      * get_messages - Get Messages
      */
     'get'(
-      parameters?: Parameters<Paths.GetMessages.HeaderParameters & Paths.GetMessages.PathParameters> | null,
+      parameters?: Parameters<Paths.GetMessages.QueryParameters & Paths.GetMessages.HeaderParameters & Paths.GetMessages.PathParameters> | null,
       data?: any,
       config?: AxiosRequestConfig  
     ): OperationResponse<Paths.GetMessages.Responses.$200>
+  }
+  ['/poll_message/{username}']: {
+    /**
+     * poll_message - Poll Message
+     */
+    'get'(
+      parameters?: Parameters<Paths.PollMessage.QueryParameters & Paths.PollMessage.HeaderParameters & Paths.PollMessage.PathParameters> | null,
+      data?: any,
+      config?: AxiosRequestConfig  
+    ): OperationResponse<Paths.PollMessage.Responses.$200>
   }
 }
 

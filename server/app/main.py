@@ -519,15 +519,15 @@ async def poll_message(
 
         stmt = stmt.order_by(text("id ASC")).limit(limit)
         messages = session.exec(stmt).fetchall()
-        if len(messages) != 0:
-            task.cancel()
-            return list(messages)
+    if len(messages) != 0:
+        task.cancel()
+        return list(messages)
+    else:
+        message = await task
+        if message is None:
+            return []
         else:
-            message = await task
-            if message is None:
-                return []
-            else:
-                return [message]
+            return [message]
 
 
 # # store messages
