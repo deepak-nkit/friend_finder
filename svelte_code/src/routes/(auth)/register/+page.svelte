@@ -149,7 +149,7 @@
 
   <button type="submit" class="btn btn-primary">Submit</button>
   <div class="flex justify-around">
-    <a href="/login"><button type="button" class="btn btn-ghost btn-sm">Login</button></a>
+    <a class="btn btn-ghost btn-sm" href="/login">Login</a>
   </div>
 </form>
 <SuperDebug data={{$form, topics}} />

@@ -2,11 +2,11 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 COPY package*.json .
 
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 COPY . .
 RUN npm run build
-RUN npm prune --production
+RUN npm prune --production --legacy-peer-deps
 
 FROM node:18-alpine
 WORKDIR /app

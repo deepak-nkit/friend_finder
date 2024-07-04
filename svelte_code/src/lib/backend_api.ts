@@ -1,9 +1,10 @@
 import type { Client as BackendClient } from "./../backend_openapi.js";
 import { OpenAPIClientAxios } from "openapi-client-axios";
+import { building } from '$app/environment';
 
 // TODO(deepak): Change through environment variable
-// export const BACKEND_BASE_URL = 'http://server';
-export const BACKEND_BASE_URL = "http://localhost:8000";
+// export const BACKEND_BASE_URL = "http://localhost:8000";
+export const BACKEND_BASE_URL = 'http://backend';
 
 /*
 Run following command to re-generate types (from fastapi openapi.json):
@@ -17,7 +18,9 @@ class BackendAPI {
 			definition: `${backend_url}/openapi.json`,
 		});
 		this.api.withServer({ url: backend_url, description: "Server" });
-		this.api.init<BackendClient>();
+		if (!building) {
+			this.api.init<BackendClient>();
+		}
 	}
 
 	async getClient() {
