@@ -21,7 +21,9 @@ import bcrypt
 from datetime import datetime
 import secrets
 from .db import db as tables
-from sqlmodel import SQLModel, and_, create_engine, Session, delete, select, or_
+from sqlmodel import SQLModel, and_, update, create_engine, Session, delete, select, or_
+from sqlalchemy import text
+
 
 origins = [
     "http://localhost",
@@ -603,6 +605,115 @@ def is_friend(session: Session, user1_id: int, user2_id: int):
         )
     )
     return session.exec(stmt).one_or_none() is not None
+
+
+class SearchBody(BaseModel):
+    username: str
+
+
+class SearchResponse(BaseModel):
+    users: list[UserInformation]
+
+
+@app.get("/search_user")
+async def search_user(
+    body: SearchBody,
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
+) -> SearchResponse:
+    users: list[UserInformation] = []
+    with Session(db) as session:
+        stmt = select(tables.User).where(
+            text("username like :search_query").bindparams(
+                search_query="%" + body.username + "%"
+            )
+        )
+        user = session.exec(stmt).fetchall()
+        if user is None:
+            raise HTTPException(status_code=400, detail="Invalid Username")
+        for u in user:
+            users.append(UserInformation.from_user(u))
+        print(users)
+        return SearchResponse(users=users)
+
+
+class EditBody(BaseModel):
+    username: str
+    email: str
+    name: str
+    address: str
+    latitude: float
+    longitude: float
+    topics: list[str]
+
+
+@app.post("/edit")
+async def edit(
+    body: EditBody,
+    current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
+    request: Request,
+):
+    topics = [topic.lower().strip() for topic in body.topics]
+    topics = [topic for topic in topics if len(topic) != 0]
+
+    print("------------------", body.latitude, body.longitude)
+
+    with Session(db) as session:  # BEGIN TRANSACTION
+        try:
+            update_user_info(
+                current_user.user.id,
+                body.name,
+                body.username,
+                body.email,
+                body.address,
+                body.latitude,
+                body.longitude,
+            )
+
+            # if len(topics) > 0:
+            #     await insert_user_topics(session, user, topics)
+
+        except sqlalchemy.exc.IntegrityError as e:
+            if "UNIQUE constraint failed: user.email" in str(e):
+                # TODO: openapi types seem wrong here?
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=RegisterUniqueError(
+                        message="email already exists", unique_field="email"
+                    ).model_dump(),
+                )
+
+            if "UNIQUE constraint failed: user.username" in str(e):
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=RegisterUniqueError(
+                        message="username already exists", unique_field="username"
+                    ).model_dump(),
+                )
+            print(e)
+            raise Exception("Couldn't match email/username for Integrity Error")
+
+
+def update_user_info(
+    id: int,
+    name: str,
+    new_username: str,
+    new_email: str,
+    address: str,
+    lat: float,
+    lng: float,
+):
+    with Session(db) as session:
+        statement = select(tables.User).where(tables.User.id == id)
+        results = session.exec(statement)
+        info = results.one()
+        print("-----------------ifo", info)
+        info.name = name
+        info.username = new_username
+        info.email = new_email
+        info.address = address
+        info.latitude = lat
+        info.longitude = lng
+        session.add(info)
 
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:

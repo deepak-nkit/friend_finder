@@ -72,12 +72,10 @@ export const actions: Actions = {
 			},
 			{
 				message: form.data.content,
-				client_id: form.data.client_id,
 			},
 		);
 		return {
-		  message: response.data,
-		  form
+		  message: response.data
 		}
 	},
 };

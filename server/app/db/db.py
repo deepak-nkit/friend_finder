@@ -7,6 +7,8 @@ from .migrations_to_apply import MIGRATIONS
 from typing import Optional
 from sqlmodel import Field, SQLModel
 
+from sqlalchemy.types import JSON
+
 
 def current_date():
     return datetime.now().isoformat()
@@ -21,6 +23,8 @@ class User(SQLModel, table=True):
     number: Optional[str] = None
     address: Optional[str] = None
     joined_on: str = Field(default_factory=current_date)
+    latitude: float   
+    longitude: float
 
 class Topic(SQLModel, table=True):
     id: int = Field(primary_key=True, default=None)

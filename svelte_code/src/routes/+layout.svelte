@@ -15,7 +15,7 @@
     if ($navigating) {
       NProgress.start();
     } else NProgress.done();
-  })
+  });
 </script>
 
 <Toaster position="top-center" />
@@ -25,3 +25,4 @@
 <div data-theme="friend_theme" class="min-h-screen box-border">
   <slot></slot>
 </div>
+

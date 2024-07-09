@@ -6,12 +6,11 @@ export const GET: RequestHandler = async ({ url, cookies, params }) => {
 	const token = cookies.get("session_token")!;
 	const client = await BACKEND_API.getClient();
 
-	let before_id =  null;
+	let before_id = null;
 	if (url.searchParams.get("before_id")) {
-	  before_id = Number.parseInt(url.searchParams.get("before_id")!)
+		before_id = Number.parseInt(url.searchParams.get("before_id")!);
 	}
 
-	
 	const message_response = await client.get_messages(
 		{
 			before_id,

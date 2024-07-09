@@ -24,6 +24,7 @@ export const load: LayoutServerLoad = async ({ cookies }) => {
 	);
 
 	if (response.status === 401) {
+
 		return redirect(303, "/login");
 	} else if (response.status === 200) {
 		return {

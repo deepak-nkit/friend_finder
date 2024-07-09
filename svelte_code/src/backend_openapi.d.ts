@@ -18,6 +18,39 @@ declare namespace Components {
             user_id: number;
         }
         /**
+         * EditBody
+         */
+        export interface EditBody {
+            /**
+             * Username
+             */
+            username: string;
+            /**
+             * Email
+             */
+            email: string;
+            /**
+             * Name
+             */
+            name: string;
+            /**
+             * Address
+             */
+            address: string;
+            /**
+             * Latitude
+             */
+            latitude: number;
+            /**
+             * Longitude
+             */
+            longitude: number;
+            /**
+             * Topics
+             */
+            topics: string[];
+        }
+        /**
          * HTTPValidationError
          */
         export interface HTTPValidationError {
@@ -122,6 +155,28 @@ declare namespace Components {
              * Unique Field
              */
             unique_field: /* Unique Field */ ("email") | ("username");
+        }
+        /**
+         * SearchBody
+         */
+        export interface SearchBody {
+            /**
+             * Username
+             */
+            username: string;
+        }
+        /**
+         * SearchResponse
+         */
+        export interface SearchResponse {
+            /**
+             * Users
+             */
+            users: /**
+             * UserInformation
+             * Same as tables.User but without the password
+             */
+            UserInformation[];
         }
         /**
          * SendMessageBody
@@ -238,6 +293,23 @@ declare namespace Paths {
         export type RequestBody = /* AddFriend */ Components.Schemas.AddFriend;
         namespace Responses {
             export type $200 = any;
+            export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
+        }
+    }
+    namespace Edit {
+        export interface HeaderParameters {
+            authorization: /* Authorization */ Parameters.Authorization;
+        }
+        namespace Parameters {
+            /**
+             * Authorization
+             */
+            export type Authorization = string;
+        }
+        export type RequestBody = /* EditBody */ Components.Schemas.EditBody;
+        namespace Responses {
+            export type $200 = any;
+            export type $409 = /* RegisterUniqueError */ Components.Schemas.RegisterUniqueError;
             export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
         }
     }
@@ -384,6 +456,22 @@ declare namespace Paths {
         namespace Responses {
             export type $200 = /* LoginResponse */ Components.Schemas.LoginResponse;
             export type $409 = /* RegisterUniqueError */ Components.Schemas.RegisterUniqueError;
+            export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
+        }
+    }
+    namespace SearchUser {
+        export interface HeaderParameters {
+            authorization: /* Authorization */ Parameters.Authorization;
+        }
+        namespace Parameters {
+            /**
+             * Authorization
+             */
+            export type Authorization = string;
+        }
+        export type RequestBody = /* SearchBody */ Components.Schemas.SearchBody;
+        namespace Responses {
+            export type $200 = /* SearchResponse */ Components.Schemas.SearchResponse;
             export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
         }
     }
@@ -572,6 +660,22 @@ export interface OperationMethods {
     data?: any,
     config?: AxiosRequestConfig  
   ): OperationResponse<Paths.PollMessage.Responses.$200>
+  /**
+   * search_user - Search User
+   */
+  'search_user'(
+    parameters?: Parameters<Paths.SearchUser.HeaderParameters> | null,
+    data?: Paths.SearchUser.RequestBody,
+    config?: AxiosRequestConfig  
+  ): OperationResponse<Paths.SearchUser.Responses.$200>
+  /**
+   * edit - Edit
+   */
+  'edit'(
+    parameters?: Parameters<Paths.Edit.HeaderParameters> | null,
+    data?: Paths.Edit.RequestBody,
+    config?: AxiosRequestConfig  
+  ): OperationResponse<Paths.Edit.Responses.$200>
 }
 
 export interface PathsDictionary {
@@ -704,6 +808,26 @@ export interface PathsDictionary {
       data?: any,
       config?: AxiosRequestConfig  
     ): OperationResponse<Paths.PollMessage.Responses.$200>
+  }
+  ['/search_user']: {
+    /**
+     * search_user - Search User
+     */
+    'get'(
+      parameters?: Parameters<Paths.SearchUser.HeaderParameters> | null,
+      data?: Paths.SearchUser.RequestBody,
+      config?: AxiosRequestConfig  
+    ): OperationResponse<Paths.SearchUser.Responses.$200>
+  }
+  ['/edit']: {
+    /**
+     * edit - Edit
+     */
+    'post'(
+      parameters?: Parameters<Paths.Edit.HeaderParameters> | null,
+      data?: Paths.Edit.RequestBody,
+      config?: AxiosRequestConfig  
+    ): OperationResponse<Paths.Edit.Responses.$200>
   }
 }
 

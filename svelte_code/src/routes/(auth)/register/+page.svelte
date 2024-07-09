@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { zodClient } from "sveltekit-superforms/adapters";
   import SuperDebug, { superForm } from "sveltekit-superforms";
   import { formSchema } from "./form_schema";
-  import { zodClient } from "sveltekit-superforms/adapters";
   import { X } from "lucide-svelte";
   import { toast } from "svelte-sonner";
   import FormError from "$lib/components/FormError.svelte";
@@ -20,6 +20,7 @@
 
   let currentTopic = "";
   let topics: string[] = [];
+
   $: {
     currentTopic = currentTopic.replace(/,/g, "");
   }
@@ -152,4 +153,3 @@
     <a class="btn btn-ghost btn-sm" href="/login">Login</a>
   </div>
 </form>
-<SuperDebug data={{$form, topics}} />
