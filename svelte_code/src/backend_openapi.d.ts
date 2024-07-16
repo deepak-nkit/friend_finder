@@ -38,6 +38,10 @@ declare namespace Components {
              */
             address: string;
             /**
+             * Topics
+             */
+            topics: string[];
+            /**
              * Latitude
              */
             latitude: number;
@@ -45,10 +49,6 @@ declare namespace Components {
              * Longitude
              */
             longitude: number;
-            /**
-             * Topics
-             */
-            topics: string[];
         }
         /**
          * HTTPValidationError
@@ -309,7 +309,6 @@ declare namespace Paths {
         export type RequestBody = /* EditBody */ Components.Schemas.EditBody;
         namespace Responses {
             export type $200 = any;
-            export type $409 = /* RegisterUniqueError */ Components.Schemas.RegisterUniqueError;
             export type $422 = /* HTTPValidationError */ Components.Schemas.HTTPValidationError;
         }
     }

@@ -25,6 +25,7 @@ export const formSchema = z.object({
 		.string(),
 	latitude: z
 		  .number(),
+
 	longitude: z
 		  .number(),
 

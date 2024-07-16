@@ -28,7 +28,7 @@
   }
 </script>
 
-<nav class="navbar bg-base-100 shadow fixed top-0 z-10">
+<nav class="navbar bg-base-100 shadow fixed top-0 z-10 bg-slate-300">
   <div class="flex-1">
     <a href="/" class="btn btn-ghost text-xl">Friend Finder</a>
   </div>

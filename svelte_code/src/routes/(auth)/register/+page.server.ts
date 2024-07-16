@@ -11,7 +11,6 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	const token = cookies.get("session_token");
 	if (token !== undefined && token !== "") {
 		let client = await BACKEND_API.getClient();
-
 		let response = await client.get_current_user(null, null, {
 			headers: {
 				Authorization: token,

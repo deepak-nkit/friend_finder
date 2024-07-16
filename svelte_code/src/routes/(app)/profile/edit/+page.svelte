@@ -16,7 +16,8 @@
   console.log(user);
   let lat: number | null;
   let lng: number | null;
-  console.log("******", top);
+
+  console.log("****** top ", top);
 
   const { form, errors, enhance } = superForm(data.form, {
     validators: zodClient(formSchema),
@@ -32,7 +33,6 @@
   let topics: string[] = [];
 
   for (let i = 0; i < top.length; i++) {
-    console.log(top[i].name);
     topics.push(top[i].name);
   }
 
@@ -46,9 +46,8 @@
     });
   }
 
-  console.log("3333333333333333333333333333333333333333");
   function addTopic(topic: string) {
-    console.log("3333333333333333333333333333333333", topic);
+    console.log("&&&",topic);
     if (topic === "") {
       return;
     }
@@ -56,16 +55,16 @@
       return;
     }
     topics.push(topic);
-    console.log("After push *********", topics);
     topics = topics;
   }
-
   function removeTopic(topic: string) {
     topics = topics.filter((x) => x !== topic);
   }
+  console.log("********* topics ::",topics)
+
 </script>
 
-<div class="flex gap-8 border-2 p-4 md:w-[73rem]">
+<div class="flex gap-8 border-2 p-4 md:w-[73rem] bg-slate-300">
   <form method="POST" class="card glass p-10 flex flex-col gap-1 md:w-[28rem]">
     <h1 class="text-center text-4xl mb-8 mt-4">Details</h1>
 
@@ -112,12 +111,12 @@
     </label>
 
     <label>
-      <span class="label-text">Add more topics</span>
+      <span class="label-text">Add more Topics</span>
       <input
         class="input input-bordered"
         type="text"
         inputmode="numeric"
-        placeholder=""
+        placeholder="topic"
         bind:value={currentTopic}
         on:keydown={(e) => {
           if (e.key === "," || e.key === "Enter") {

@@ -37,8 +37,6 @@ export const load: PageServerLoad = async ({ cookies }) => {
 	}
 };
 
-
-
 export const actions: Actions = {
 	default: async ({ request, cookies }) => {
 		const form = await superValidate(request, zod(formSchema));
@@ -47,8 +45,8 @@ export const actions: Actions = {
 		}
 
 		const client = await BACKEND_API.getClient();
-		console.log("******edit*******")
-		console.log("******let lete *******", form.data.latitude)
+		console.log("******edit*******");
+		console.log("******let lete *******", form.data.latitude);
 
 		const data = {
 			username: form.data.username,
@@ -56,13 +54,19 @@ export const actions: Actions = {
 			name: form.data.name,
 			address: form.data.address,
 			latitude: form.data.latitude,
-			longitude:  form.data.longitude,
+			longitude: form.data.longitude,
 			topics: form.data.topics,
 		};
+		
+		console.log("======*****=====****===== username ", typeof(data.username) , data.username );
+		console.log("======*****=====****===== email ", typeof(data.email) , data.email);
+		console.log("======*****=====****===== name ", typeof(data.name) , data.name);
+		console.log("======*****=====****===== address ", typeof(data.address) , data.address);
+		console.log("================latitude     ", typeof (data.latitude) , data.latitude);
+		console.log("================latitude     ", typeof (data.longitude) , data.longitude);
+		console.log("================ topics ", typeof form.data.topics);
 
-		console.log("======*****=====****===== data sending", data)
-		console.log("================ data sending", form.data.topics)
-
+		console.log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", data)
 		const response = await client.edit(null, data, {
 			validateStatus: (status) => {
 				return [409, 200].includes(status);
@@ -83,12 +87,7 @@ export const actions: Actions = {
 			}
 			return fail(409, { form });
 		} else if (response.status === 200) {
-			// -> 200
-			cookies.set("session_token", response.data.session_token, {
-				maxAge: 3600 * 24 * 365 * 100,
-				path: "/",
-			});
-			redirect(303, "/");
+				redirect(303, "/profile");
 		} else {
 			unreachable();
 		}

@@ -30,10 +30,8 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 		redirect(303, "/");
 	}
 	if (response.status === 200) {
-		return new Response(JSON.stringify(response.data), {
-			headers: { "Content-Type": "application/json" },
-		});
-	}
+		return new Response(JSON.stringify(response))
+		}
 };
 
 // if (response.status === 200) {

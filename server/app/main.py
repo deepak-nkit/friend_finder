@@ -9,8 +9,9 @@ from pydantic import UUID4, BaseModel
 from typing import Optional
 import uuid
 import sqlalchemy
-from sqlalchemy import Engine, text
+from sqlalchemy import NUMERIC, Engine, Numeric, text
 import sqlalchemy.exc
+from sqlalchemy.sql.elements import _NUMBER
 from uvicorn import run
 import os
 from typing import Annotated
@@ -641,17 +642,17 @@ class EditBody(BaseModel):
     email: str
     name: str
     address: str
+    topics: list[str]
     latitude: float
     longitude: float
-    topics: list[str]
 
 
 @app.post("/edit")
 async def edit(
     body: EditBody,
     current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
-    request: Request,
 ):
+    print("++++++++++++++++++++++" , body)
     topics = [topic.lower().strip() for topic in body.topics]
     topics = [topic for topic in topics if len(topic) != 0]
 
@@ -691,7 +692,6 @@ async def edit(
                 )
             print(e)
             raise Exception("Couldn't match email/username for Integrity Error")
-
 
 def update_user_info(
     id: int,

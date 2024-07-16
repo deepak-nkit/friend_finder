@@ -9,7 +9,7 @@
   let href = `/user/${user_info.user.username}`;
 </script>
 
-<div class="border rounded-2xl border-gray-300 shadow-sm flex sm:h-32 h-48 sm:w-96 w-84 sm:grow-0 grow">
+<div class="border rounded-2xl border-gray-300 shadow-sm flex sm:h-32 h-48 sm:w-96 w-84 sm:grow-0 grow bg-slate-100">
   <a {href} class="h-full w-auto aspect-square flex-grow-0">
     <figure class="h-full w-full">
       <img
@@ -52,18 +52,3 @@
     </div>
   </div>
 </div>
-
-<!-- <div class="card card-side bg-base-100 shadow-xl max-h-32 max-w-64"> -->
-<!-- <figure> -->
-<!-- <img -->
-<!-- src="https://img.daisyui.com/images/stock/photo-1635805737707-575885ab0820.jpg" -->
-<!-- alt="Movie" /> -->
-<!-- </figure> -->
-<!-- <div class="card-body"> -->
-<!-- <h2 class="card-title">DS</h2> -->
-<!-- <p>3 days ago</p> -->
-<!-- <div class="card-actions justify-end"> -->
-<!-- <button class="btn btn-primary">Chat</button> -->
-<!-- </div> -->
-<!-- </div> -->
-<!-- </div> -->

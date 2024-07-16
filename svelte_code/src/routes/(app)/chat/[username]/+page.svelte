@@ -110,6 +110,7 @@
 </script>
 
 
+
 {#snippet showMessage(message: Message)}
     {#if message.sender === data.self_user.user.id}
       <div class="chat chat-end">
@@ -157,9 +158,26 @@
       type="text"
       required
       autocomplete="off"
-      placeholder="Hi!"
+      placeholder="Message"
       name="content"
       bind:value={$form.content}
     />
   </form>
 </div>
+<style>
+  html {
+    --s: 52px; /* control the size*/
+    --c1: #dad8a7;
+    --c2: #ff3d7f;
+    --c3: #34dfd2;
+  
+    --_s:0 0/var(--s) var(--s);
+    background:
+      radial-gradient(#0000 50%,#0002 54%,var(--c1) 57%) var(--_s),
+      radial-gradient(circle at 40% 30%,#0000 4%,#000 90%) var(--_s),
+      repeating-conic-gradient(var(--c2) 0 25%,var(--c3) 0 50%)
+       0 0/calc(2*var(--s)) calc(2*var(--s));
+  }
+
+  
+</style>

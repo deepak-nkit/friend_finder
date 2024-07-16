@@ -98,7 +98,7 @@
       class="input input-bordered"
       type="text"
       inputmode="numeric"
-      placeholder=""
+      placeholder="pincode"
       name="pincode"
       maxlength="6"
       bind:value={$form.pincode}
@@ -111,8 +111,7 @@
     <input
       class="input input-bordered"
       type="text"
-      inputmode="numeric"
-      placeholder=""
+      placeholder="topic"
       bind:value={currentTopic}
       on:keydown={(e) => {
         if (e.key === "," || e.key === "Enter") {
