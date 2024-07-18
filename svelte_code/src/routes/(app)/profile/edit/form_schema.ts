@@ -6,11 +6,6 @@ if (dev) {
 	min_password_length = 2;
 }
 
-let pincode = z.string()
-		.length(6, "pincode should be of length 6")
-		.regex(/^\d+$/)
-
-
 export const formSchema = z.object({
 	username: z
 		.string()
@@ -21,13 +16,10 @@ export const formSchema = z.object({
 		.string()
 		.min(1)
 		.regex(/^[a-zA-Z ]+$/, "Only alphabet, and space are allowed"),
-	address: z
-		.string(),
-	latitude: z
-		  .number(),
+	address: z.string(),
+	latitude: z.number(),
 
-	longitude: z
-		  .number(),
+	longitude: z.number(),
 
 	topics: z.array(
 		z

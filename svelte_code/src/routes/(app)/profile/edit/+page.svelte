@@ -13,11 +13,8 @@
   export let data: PageData;
   $: user = data.edit_profile.user;
   let top = data.edit_profile.topics;
-  console.log(user);
   let lat: number | null;
   let lng: number | null;
-
-  console.log("****** top ", top);
 
   const { form, errors, enhance } = superForm(data.form, {
     validators: zodClient(formSchema),
@@ -28,7 +25,6 @@
       toast.error(`Something went wrong at server`);
     },
   });
-
   let currentTopic = "";
   let topics: string[] = [];
 
@@ -47,7 +43,6 @@
   }
 
   function addTopic(topic: string) {
-    console.log("&&&",topic);
     if (topic === "") {
       return;
     }
@@ -60,8 +55,6 @@
   function removeTopic(topic: string) {
     topics = topics.filter((x) => x !== topic);
   }
-  console.log("********* topics ::",topics)
-
 </script>
 
 <div class="flex gap-8 border-2 p-4 md:w-[73rem] bg-slate-300">

@@ -39,6 +39,10 @@ export const load: PageServerLoad = async ({ cookies }) => {
 
 export const actions: Actions = {
 	default: async ({ request, cookies }) => {
+		const token = cookies.get("session_token");
+		if (!token) {
+			return redirect(303, "/login");
+		}
 		const form = await superValidate(request, zod(formSchema));
 		if (!form.valid) {
 			return fail(400, { form });
@@ -57,21 +61,22 @@ export const actions: Actions = {
 			longitude: form.data.longitude,
 			topics: form.data.topics,
 		};
-		
-		console.log("======*****=====****===== username ", typeof(data.username) , data.username );
-		console.log("======*****=====****===== email ", typeof(data.email) , data.email);
-		console.log("======*****=====****===== name ", typeof(data.name) , data.name);
-		console.log("======*****=====****===== address ", typeof(data.address) , data.address);
-		console.log("================latitude     ", typeof (data.latitude) , data.latitude);
-		console.log("================latitude     ", typeof (data.longitude) , data.longitude);
-		console.log("================ topics ", typeof form.data.topics);
 
-		console.log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", data)
-		const response = await client.edit(null, data, {
-			validateStatus: (status) => {
-				return [409, 200].includes(status);
+		const response = await client.edit(
+			{
+				authorization: token,
 			},
-		});
+			data,
+			{
+				validateStatus: (status) => {
+					return [409, 200, 422].includes(status);
+				},
+			},
+		);
+		if (response.status) {
+			console.log(JSON.stringify(response.data));
+			throw new Error("422 from fastapi");
+		}
 
 		if (response.status === 409) {
 			let data = response.data as unknown as {
@@ -87,7 +92,8 @@ export const actions: Actions = {
 			}
 			return fail(409, { form });
 		} else if (response.status === 200) {
-				redirect(303, "/profile");
+			console.log("********************************************************************************")
+			redirect(303, "/profile");
 		} else {
 			unreachable();
 		}

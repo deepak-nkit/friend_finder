@@ -1,5 +1,5 @@
 import { BACKEND_API } from "$lib/backend_api";
-import { redirect } from "@sveltejs/kit";
+import {fail, redirect } from "@sveltejs/kit";
 import { unreachable } from "$lib/utils";
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
@@ -13,7 +13,9 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	}
 
 	if (!username) {
-		return { error: "No Userfound" };
+		// Use `fail` function from svelte:q!
+		
+		return fail(400,{ error: "No Userfound" });
 	}
 
 	let client = await BACKEND_API.getClient();
@@ -29,9 +31,10 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	if (response.status === 401) {
 		redirect(303, "/");
 	}
-	if (response.status === 200) {
-		return new Response(JSON.stringify(response))
-		}
+	return new Response(JSON.stringify(response))
+
+
+	//// ??????????
 };
 
 // if (response.status === 200) {

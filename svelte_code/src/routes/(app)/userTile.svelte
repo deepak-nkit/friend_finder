@@ -9,7 +9,7 @@
   let href = `/user/${user_info.user.username}`;
 </script>
 
-<div class="border rounded-2xl border-gray-300 shadow-sm flex sm:h-32 h-48 sm:w-96 w-84 sm:grow-0 grow bg-slate-100">
+<div class="border rounded-2xl border-gray-300 shadow-sm flex sm:h-32 h-48 sm:w-96 w-84 sm:grow-0 grow  border-2 bg-violet-50">
   <a {href} class="h-full w-auto aspect-square flex-grow-0">
     <figure class="h-full w-full">
       <img

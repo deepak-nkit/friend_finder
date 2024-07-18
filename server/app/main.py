@@ -553,7 +553,11 @@ async def insert_user_topics(
         else:
             topic_id = result[0].id
 
-        session.add(tables.UserTopic(topic_id=topic_id, user_id=user.id))
+        try:
+            session.add(tables.UserTopic(topic_id=topic_id, user_id=user.id))
+            session.flush()
+        except sqlalchemy.exc.IntegrityError as e:
+            continue
     session.flush()
 
 
@@ -652,7 +656,7 @@ async def edit(
     body: EditBody,
     current_user: Annotated[LoggedInUser, Depends(get_logged_in_user)],
 ):
-    print("++++++++++++++++++++++" , body)
+    print("++++++++++++++++++++++", body)
     topics = [topic.lower().strip() for topic in body.topics]
     topics = [topic for topic in topics if len(topic) != 0]
 
@@ -669,6 +673,7 @@ async def edit(
                 body.latitude,
                 body.longitude,
             )
+            print("------------------!!!!!!!!!!!!!!", body.latitude, body.longitude)
 
             # if len(topics) > 0:
             #     await insert_user_topics(session, user, topics)
@@ -690,8 +695,11 @@ async def edit(
                         message="username already exists", unique_field="username"
                     ).model_dump(),
                 )
+            print("^^^^^^^^^^^^^^^^^^^^^")
             print(e)
+            print("^^^^^^^^^^^^^^^^^^^^^")
             raise Exception("Couldn't match email/username for Integrity Error")
+
 
 def update_user_info(
     id: int,
@@ -699,21 +707,24 @@ def update_user_info(
     new_username: str,
     new_email: str,
     address: str,
-    lat: float,
-    lng: float,
+    latitude: float,
+    longitude: float,
 ):
     with Session(db) as session:
+        print("~~~~~~~~~~~~~~", latitude , longitude)
         statement = select(tables.User).where(tables.User.id == id)
-        results = session.exec(statement)
-        info = results.one()
+        info = session.exec(statement).one()
         print("-----------------ifo", info)
         info.name = name
         info.username = new_username
         info.email = new_email
         info.address = address
-        info.latitude = lat
-        info.longitude = lng
+        info.latitude = latitude
+        info.longitude = longitude
         session.add(info)
+
+        session.commit()
+        session.add(tables.Session(user_id=user.id, token=token))
 
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:

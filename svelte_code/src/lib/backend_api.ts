@@ -3,8 +3,8 @@ import { OpenAPIClientAxios } from "openapi-client-axios";
 import { building } from '$app/environment';
 
 // TODO(deepak): Change through environment variable
-export const BACKEND_BASE_URL = "http://localhost:8000";
-// export const BACKEND_BASE_URL = 'http://backend';
+// export const BACKEND_BASE_URL = "http://localhost:8000";
+export const BACKEND_BASE_URL = 'http://backend';
 
 /*
 Run following command to re-generate types (from fastapi openapi.json):

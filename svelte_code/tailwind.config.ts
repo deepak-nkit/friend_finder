@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 let colors = require("tailwindcss/colors");
 
+
 export default {
 	content: ["./src/**/*.{html,js,svelte,ts}"],
 
