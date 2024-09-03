@@ -4,9 +4,10 @@
 #        NOTE: remember to update this dockerfile with new image names
 # To Deploy: docker --context prod stack deploy -c docker-compose.yml friend_finder --prune
 #       `--prune`: delete stuff no longer in use.
+
 services:
   frontend:
-    image: friend_finder/frontend:v4
+    image: dr.nkit.dev/friend_finder/frontend:v9.1
     environment:
       - "ORIGIN=https://friends.nkit.dev"
     ports:
@@ -19,7 +20,7 @@ services:
       caddy.reverse_proxy: "{{upstreams 3000}}"
 
   backend:
-    image: friend_finder/backend:v4
+    image: dr.nkit.dev/friend_finder/backend:v9.0
     networks:
       - network_net
     volumes:

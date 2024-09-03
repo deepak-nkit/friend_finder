@@ -51,8 +51,8 @@
   <button type="submit" class="btn btn-primary">Submit</button>
 
   <div class="flex justify-around">
-    <a href="/register">
-      <button type="button" class="btn btn-ghost btn-sm">Register </button>
-    <button type="button" class="btn btn-ghost btn-sm">Forgot Password</button>
+    <a class="btn btn-ghost btn-sm" href="/register">Register </a>
+    <a class="btn btn-ghost btn-sm" href="/register">Forgot Password</a>
   </div>
+
 </form>

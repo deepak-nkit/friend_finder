@@ -13,7 +13,7 @@
     <img
       src="https://img.daisyui.com/images/stock/photo-1635805737707-575885ab0820.jpg"
       class="h-full w-full p-12 rounded-full aspect-square"
-      alt="Movie"
+      alt="?"
     />
   </div>
   <div class="grow flex flex-col m-3">

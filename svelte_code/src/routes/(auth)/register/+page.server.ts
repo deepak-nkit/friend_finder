@@ -33,6 +33,7 @@ export const load: PageServerLoad = async ({ cookies }) => {
 export const actions: Actions = {
 	default: async ({ request, cookies }) => {
 		const form = await superValidate(request, zod(formSchema));
+		console.log("in regiser")
 		if (!form.valid) {
 			return fail(400, { form });
 		}
