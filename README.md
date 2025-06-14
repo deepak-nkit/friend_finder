@@ -9,6 +9,7 @@
 - **Database**: SQLite
 - **Authentication**: Session tokens stored in cookies
 - **Deployment**: Docker
+- **Maps**: [Leaflet.js](https://leafletjs.com/) for displaying user locations on a street map
 
 ## 🌟 Features
 
@@ -17,7 +18,18 @@
 - 💬 Real-time chat functionality
 - 🕵️‍♂️ Search friends by username, topic, or pincode
 - 🗺️ User map integration
+- 🗺️ Map integration using Leaflet.js** to show nearby or connected users on a street-level map
 - 📦 Easy to deploy with Docker
+
+## 🧭 Interactive Map with Leaflet.js
+
+Friend Finder uses **Leaflet.js** to embed a real-time street map (StreetFit style) where users can:
+
+- View their own location on the map
+- See other users' locations
+- Explore and interact with user markers
+
+The map is lightweight, mobile-friendly, and integrated with the Geolocation API to fetch current coordinates securely.
 
 ## 🧑‍💻 Getting Started
 
