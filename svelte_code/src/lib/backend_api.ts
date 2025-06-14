@@ -2,9 +2,14 @@ import type { Client as BackendClient } from "./../backend_openapi.js";
 import { OpenAPIClientAxios } from "openapi-client-axios";
 import { building } from '$app/environment';
 
-// TODO(deepak): Change through environment variable
-export const BACKEND_BASE_URL = "http://localhost:8000";
-// export const BACKEND_BASE_URL = 'http://backend:8000';
+import { env } from "$env/dynamic/private";
+
+TODO(deepak): Change through environment variable
+// export const BACKEND_BASE_URL = "http://localhost:8006";
+
+export const BACKEND_BASE_URL = env.BACKEND_BASE_URL || 'http://localhost:8000';
+
+
 
 /*
 Run following command to re-generate types (from fastapi openapi.json):

@@ -5,26 +5,29 @@
   let timer: number | undefined;
   export let inputval = "";
 
-   const debounce = (v: string) => {
+  const debounce = (v: string) => {
     clearTimeout(timer);
     timer = setTimeout(() => {
       val = v;
-      if (inputval.length > 1){
+      if (inputval.length > 1) {
         finder();
       }
     }, 750);
   };
 
   export async function finder() {
-    const response = await fetch(`/roll/?inputval=${encodeURIComponent(inputval)}`, {
-      method: "GET",
-      headers: {
-        "content-type": "application/json",
+    const response = await fetch(
+      `/roll/?inputval=${encodeURIComponent(inputval)}`,
+      {
+        method: "GET",
+        headers: {
+          "content-type": "application/json",
+        },
       },
-    });
+    );
 
     console.log("--------------------", response);
-   user: await response.json();
+    user: await response.json();
   }
 </script>
 
@@ -81,3 +84,9 @@
 <div class="pt-20 m-auto max-w-screen-lg md:px-5 px-2">
   <slot></slot>
 </div>
+
+<footer class="footer footer-center bg-base-300 text-base-content p-4 fixed bottom-0 left-0 w-full">
+  <aside>
+    <p>Copyright © {new Date().getFullYear()} - All right reserved by Deep saini</p>
+  </aside>
+</footer>

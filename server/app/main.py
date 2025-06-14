@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
 from datetime import datetime
 import secrets
-from .db import db as tables
+from db import db as tables
 from sqlmodel import SQLModel, and_, update, create_engine, Session, delete, select, or_
 from sqlalchemy import text
 
@@ -111,6 +111,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+
 )
 
 
@@ -609,6 +610,8 @@ def is_friend(session: Session, user1_id: int, user2_id: int):
             ),
         )
     )
+    result = session.exec(stmt).first()
+    print("******************************************************************",result is not None)
     return session.exec(stmt).one_or_none() is not None
 
 

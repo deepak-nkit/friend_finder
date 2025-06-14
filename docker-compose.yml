@@ -7,9 +7,10 @@
 
 services:
   frontend:
-    image: dr.nkit.dev/friend_finder/frontend:v9.1
+    image: dr.nkit.dev/friend_finder/frontend:v9.3
     environment:
       - "ORIGIN=https://friends.nkit.dev"
+      - "BACKEND_BASE_URL=http://backend:8000"
     ports:
       - "3000:3000"
     networks:
@@ -20,7 +21,7 @@ services:
       caddy.reverse_proxy: "{{upstreams 3000}}"
 
   backend:
-    image: dr.nkit.dev/friend_finder/backend:v9.0
+    image: dr.nkit.dev/friend_finder/backend:v9.3
     networks:
       - network_net
     volumes:
